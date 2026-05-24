@@ -14,7 +14,8 @@ class MobilScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Kelola Data Mobil')),
       body: mobilState.when(
         data: (listMobil) {
-          if (listMobil.isEmpty) return const Center(child: Text('Belum ada data mobil.'));
+          if (listMobil.isEmpty)
+            return const Center(child: Text('Belum ada data mobil.'));
           return ListView.builder(
             itemCount: listMobil.length,
             itemBuilder: (context, index) {
@@ -26,14 +27,24 @@ class MobilScreen extends ConsumerWidget {
                     backgroundColor: Colors.blue,
                     child: Icon(Icons.directions_car, color: Colors.white),
                   ),
-                  title: Text(mobil.noPlat, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                  subtitle: Text('${mobil.kategori ?? 'Tanpa Kategori'} | Tahun: ${mobil.tahun ?? '-'}'),
+                  title: Text(
+                    mobil.noPlat,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  // UPDATE: Ambil value dari enum menggunakan .label
+                  subtitle: Text(
+                    '${mobil.kategori?.label ?? 'Tanpa Kategori'} | Tahun: ${mobil.tahun ?? '-'}',
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () => _showFormBottomSheet(context, ref, mobil: mobil),
+                        onPressed: () =>
+                            _showFormBottomSheet(context, ref, mobil: mobil),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
@@ -62,12 +73,19 @@ class MobilScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Mobil'),
-        content: Text('Yakin ingin menghapus mobil dengan plat ${mobil.noPlat}?'),
+        content: Text(
+          'Yakin ingin menghapus mobil dengan plat ${mobil.noPlat}?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
           TextButton(
             onPressed: () {
-              ref.read(mobilControllerProvider.notifier).deleteMobil(mobil.idMobil!);
+              ref
+                  .read(mobilControllerProvider.notifier)
+                  .deleteMobil(mobil.idMobil!);
               Navigator.pop(ctx);
             },
             child: const Text('Hapus', style: TextStyle(color: Colors.red)),
@@ -77,79 +95,170 @@ class MobilScreen extends ConsumerWidget {
     );
   }
 
-  void _showFormBottomSheet(BuildContext context, WidgetRef ref, {MobilModel? mobil}) {
+  void _showFormBottomSheet(
+    BuildContext context,
+    WidgetRef ref, {
+    MobilModel? mobil,
+  }) {
     final isEdit = mobil != null;
     final platCtrl = TextEditingController(text: mobil?.noPlat);
-    final kategoriCtrl = TextEditingController(text: mobil?.kategori);
-    final tahunCtrl = TextEditingController(text: mobil?.tahun?.toString() ?? '');
+    final tahunCtrl = TextEditingController(
+      text: mobil?.tahun?.toString() ?? '',
+    );
     final formKey = GlobalKey<FormState>();
+
+    MobilKategori? selectedKategori = mobil?.kategori;
+    bool isSubmitting = false; // Tambahan: state untuk efek loading pada tombol
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          left: 16, right: 16, top: 24,
-        ),
-        child: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                isEdit ? 'Edit Mobil' : 'Tambah Mobil Baru',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: platCtrl,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(labelText: 'No. Plat (Contoh: B 1234 CD)', border: OutlineInputBorder()),
-                validator: (val) => val!.isEmpty ? 'No. Plat wajib diisi' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: kategoriCtrl,
-                decoration: const InputDecoration(labelText: 'Kategori (Truk/Pickup/Minibus)', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: tahunCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Tahun Kendaraan', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(minimumSize: const Size.square(50), padding: const EdgeInsets.symmetric(vertical: 16)),
-                onPressed: () async {
-                  if (formKey.currentState!.validate()) {
-                    final newMobil = MobilModel(
-                      idMobil: mobil?.idMobil,
-                      noPlat: platCtrl.text.trim().toUpperCase(),
-                      kategori: kategoriCtrl.text.trim(),
-                      tahun: int.tryParse(tahunCtrl.text.trim()),
-                    );
+      // Ubah penamaan context di sini agar tidak bentrok dengan context halaman
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (BuildContext innerContext, StateSetter setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(innerContext).viewInsets.bottom,
+              left: 16,
+              right: 16,
+              top: 24,
+            ),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isEdit ? 'Edit Mobil' : 'Tambah Mobil Baru',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-                    try {
-                      if (isEdit) {
-                        await ref.read(mobilControllerProvider.notifier).updateMobil(newMobil);
-                      } else {
-                        await ref.read(mobilControllerProvider.notifier).addMobil(newMobil);
-                      }
-                      if (ctx.mounted) Navigator.pop(ctx);
-                    } catch (e) {
-                      final errMsg = e.toString().replaceAll('Exception: ', '');
-                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(errMsg), backgroundColor: Colors.red));
-                    }
-                  }
-                },
-                child: Text(isEdit ? 'Simpan Perubahan' : 'Simpan Mobil'),
+                  TextFormField(
+                    controller: platCtrl,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      labelText: 'No. Plat (Contoh: B 1234 CD)',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) =>
+                        val!.isEmpty ? 'No. Plat wajib diisi' : null,
+                  ),
+                  const SizedBox(height: 12),
+
+                  DropdownButtonFormField<MobilKategori>(
+                    value: selectedKategori,
+                    decoration: const InputDecoration(
+                      labelText: 'Kategori',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: MobilKategori.values.map((kategori) {
+                      return DropdownMenuItem(
+                        value: kategori,
+                        child: Text(kategori.label),
+                      );
+                    }).toList(),
+                    onChanged: (MobilKategori? newValue) {
+                      setModalState(() {
+                        selectedKategori = newValue;
+                      });
+                    },
+                    validator: (val) =>
+                        val == null ? 'Kategori wajib dipilih' : null,
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextFormField(
+                    controller: tahunCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Tahun Kendaraan',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    // Jika sedang loading, tombol di-disable (null)
+                    onPressed: isSubmitting
+                        ? null
+                        : () async {
+                            if (formKey.currentState!.validate()) {
+                              // Ubah state jadi loading agar tombol memutar indikator
+                              setModalState(() {
+                                isSubmitting = true;
+                              });
+
+                              final newMobil = MobilModel(
+                                idMobil: mobil?.idMobil,
+                                noPlat: platCtrl.text.trim().toUpperCase(),
+                                kategori: selectedKategori,
+                                tahun: int.tryParse(tahunCtrl.text.trim()),
+                              );
+
+                              try {
+                                if (isEdit) {
+                                  await ref
+                                      .read(mobilControllerProvider.notifier)
+                                      .updateMobil(newMobil);
+                                } else {
+                                  await ref
+                                      .read(mobilControllerProvider.notifier)
+                                      .addMobil(newMobil);
+                                }
+
+                                // PENTING: Gunakan innerContext untuk menutup bottom sheet
+                                if (innerContext.mounted) {
+                                  Navigator.pop(innerContext);
+                                }
+                              } catch (e) {
+                                // Jika gagal, matikan loading agar user bisa coba lagi
+                                setModalState(() {
+                                  isSubmitting = false;
+                                });
+
+                                final errMsg = e.toString().replaceAll(
+                                  'Exception: ',
+                                  '',
+                                );
+                                if (innerContext.mounted) {
+                                  ScaffoldMessenger.of(
+                                    innerContext,
+                                  ).showSnackBar(
+                                    SnackBar(
+                                      content: Text(errMsg),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                    // Tampilkan indikator loading atau teks biasa
+                    child: isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 3,
+                            ),
+                          )
+                        : Text(isEdit ? 'Simpan Perubahan' : 'Simpan Mobil'),
+                  ),
+                  const SizedBox(height: 24),
+                ],
               ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

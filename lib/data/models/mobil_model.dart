@@ -1,22 +1,39 @@
+// 1. Definisikan Enum sesuai dengan nilai di database Supabase
+enum MobilKategori {
+  trailer('Trailer'),
+  gandengan('Gandengan'),
+  tronton('Tronton'),
+  engkel('Engkel'),
+  lt('LT');
+
+  final String label;
+  const MobilKategori(this.label);
+
+  // Fungsi helper untuk mengubah String dari database kembali menjadi Enum
+  static MobilKategori? fromString(String? text) {
+    if (text == null) return null;
+    return MobilKategori.values.firstWhere(
+      (e) => e.label.toLowerCase() == text.toLowerCase(),
+      // Jika suatu saat ada data kosong/tidak cocok, kita beri default Engkel (atau bisa diubah sesuai kebutuhan)
+      orElse: () => MobilKategori.engkel,
+    );
+  }
+}
+
 class MobilModel {
-  final String? idMobil;
+  final int? idMobil; // <--- UBAH DARI String? MENJADI int?
   final String noPlat;
-  final String? kategori;
+  final MobilKategori? kategori;
   final int? tahun;
 
-  MobilModel({
-    this.idMobil,
-    required this.noPlat,
-    this.kategori,
-    this.tahun,
-  });
+  MobilModel({this.idMobil, required this.noPlat, this.kategori, this.tahun});
 
   factory MobilModel.fromJson(Map<String, dynamic> json) {
     return MobilModel(
-      idMobil: json['id_mobil']?.toString(),
-      noPlat: json['no_plat']?.toString() ?? '',
-      kategori: json['kategori']?.toString(),
-      tahun: json['tahun'] != null ? int.tryParse(json['tahun'].toString()) : null,
+      idMobil: json['id_mobil'] as int?, // <--- PASTIKAN DI-CAST SEBAGAI int?
+      noPlat: json['no_plat'] as String,
+      kategori: MobilKategori.fromString(json['kategori'] as String?),
+      tahun: json['tahun'] as int?,
     );
   }
 
@@ -24,22 +41,8 @@ class MobilModel {
     return {
       if (idMobil != null) 'id_mobil': idMobil,
       'no_plat': noPlat,
-      'kategori': kategori,
+      'kategori': kategori?.label,
       'tahun': tahun,
     };
-  }
-
-  MobilModel copyWith({
-    String? idMobil,
-    String? noPlat,
-    String? kategori,
-    int? tahun,
-  }) {
-    return MobilModel(
-      idMobil: idMobil ?? this.idMobil,
-      noPlat: noPlat ?? this.noPlat,
-      kategori: kategori ?? this.kategori,
-      tahun: tahun ?? this.tahun,
-    );
   }
 }

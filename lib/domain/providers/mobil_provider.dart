@@ -2,10 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/mobil_model.dart';
 import '../../data/repositories/mobil_repository.dart';
 
-final mobilControllerProvider = StateNotifierProvider<MobilController, AsyncValue<List<MobilModel>>>((ref) {
-  final repository = ref.watch(mobilRepositoryProvider);
-  return MobilController(repository);
-});
+final mobilControllerProvider =
+    StateNotifierProvider<MobilController, AsyncValue<List<MobilModel>>>((ref) {
+      final repository = ref.watch(mobilRepositoryProvider);
+      return MobilController(repository);
+    });
 
 class MobilController extends StateNotifier<AsyncValue<List<MobilModel>>> {
   final MobilRepository _repository;
@@ -35,7 +36,9 @@ class MobilController extends StateNotifier<AsyncValue<List<MobilModel>>> {
       await _repository.updateMobil(mobil);
       if (state.hasValue) {
         state = AsyncValue.data(
-          state.value!.map((e) => e.idMobil == mobil.idMobil ? mobil : e).toList(),
+          state.value!
+              .map((e) => e.idMobil == mobil.idMobil ? mobil : e)
+              .toList(),
         );
       }
     } catch (e) {
@@ -43,7 +46,7 @@ class MobilController extends StateNotifier<AsyncValue<List<MobilModel>>> {
     }
   }
 
-  Future<void> deleteMobil(String idMobil) async {
+  Future<void> deleteMobil(int idMobil) async {
     try {
       await _repository.deleteMobil(idMobil);
       if (state.hasValue) {
