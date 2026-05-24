@@ -30,7 +30,8 @@ class BarangScreen extends ConsumerWidget {
                     child: Text(barang.namaBarang[0].toUpperCase()),
                   ),
                   title: Text(barang.namaBarang, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Kategori: ${barang.kategori ?? '-'} | Stok: ${barang.stock}'),
+                  // Menampilkan label dari Enum
+                  subtitle: Text('Kategori: ${barang.kategori?.label ?? 'Umum'} | Stok: ${barang.stock}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -82,74 +83,106 @@ class BarangScreen extends ConsumerWidget {
   void _showFormBottomSheet(BuildContext context, WidgetRef ref, {BarangModel? barang}) {
     final isEdit = barang != null;
     final namaCtrl = TextEditingController(text: barang?.namaBarang);
-    final kategoriCtrl = TextEditingController(text: barang?.kategori);
     final stockCtrl = TextEditingController(text: barang?.stock.toString() ?? '0');
     final formKey = GlobalKey<FormState>();
+
+    // Menyimpan pilihan Enum saat ini
+    BarangKategori? selectedKategori = barang?.kategori;
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          left: 16,
-          right: 16,
-          top: 24,
-        ),
-        child: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                isEdit ? 'Edit Barang' : 'Tambah Barang Baru',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: namaCtrl,
-                decoration: const InputDecoration(labelText: 'Nama Barang', border: OutlineInputBorder()),
-                validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: kategoriCtrl,
-                decoration: const InputDecoration(labelText: 'Kategori', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: stockCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Stok Awal', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(minimumSize: const Size.square(50), padding: const EdgeInsets.symmetric(vertical: 16)),
-                onPressed: () async {
-                  if (formKey.currentState!.validate()) {
-                    final newBarang = BarangModel(
-                      idBarang: barang?.idBarang,
-                      namaBarang: namaCtrl.text.trim(),
-                      kategori: kategoriCtrl.text.trim(),
-                      stock: int.tryParse(stockCtrl.text.trim()) ?? 0,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (innerContext, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(innerContext).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 24,
+          ),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isEdit ? 'Edit Barang' : 'Tambah Barang Baru',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                
+                TextFormField(
+                  controller: namaCtrl,
+                  decoration: const InputDecoration(labelText: 'Nama Barang', border: OutlineInputBorder()),
+                  validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
+                ),
+                const SizedBox(height: 12),
+                
+                // Mengubah Input Text menjadi Dropdown Enum
+                DropdownButtonFormField<BarangKategori>(
+                  value: selectedKategori,
+                  decoration: const InputDecoration(labelText: 'Kategori', border: OutlineInputBorder()),
+                  items: BarangKategori.values.map((k) {
+                    return DropdownMenuItem(
+                      value: k,
+                      child: Text(k.label),
                     );
+                  }).toList(),
+                  onChanged: (BarangKategori? newValue) {
+                    setModalState(() {
+                      selectedKategori = newValue;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                
+                TextFormField(
+                  controller: stockCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Stok Awal', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 24),
+                
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50), 
+                    padding: const EdgeInsets.symmetric(vertical: 16)
+                  ),
+                  onPressed: isSubmitting ? null : () async {
+                    if (formKey.currentState!.validate()) {
+                      setModalState(() => isSubmitting = true);
+                      
+                      final newBarang = BarangModel(
+                        idBarang: barang?.idBarang,
+                        namaBarang: namaCtrl.text.trim(),
+                        kategori: selectedKategori, // Menggunakan pilihan Enum
+                        stock: int.tryParse(stockCtrl.text.trim()) ?? 0,
+                      );
 
-                    try {
-                      if (isEdit) {
-                        await ref.read(barangControllerProvider.notifier).updateBarang(newBarang);
-                      } else {
-                        await ref.read(barangControllerProvider.notifier).addBarang(newBarang);
+                      try {
+                        if (isEdit) {
+                          await ref.read(barangControllerProvider.notifier).updateBarang(newBarang);
+                        } else {
+                          await ref.read(barangControllerProvider.notifier).addBarang(newBarang);
+                        }
+                        if (innerContext.mounted) Navigator.pop(innerContext);
+                      } catch (e) {
+                        setModalState(() => isSubmitting = false);
+                        final errMsg = e.toString().replaceAll('Exception: ', '');
+                        if (innerContext.mounted) {
+                          ScaffoldMessenger.of(innerContext).showSnackBar(SnackBar(content: Text(errMsg), backgroundColor: Colors.red));
+                        }
                       }
-                      if (ctx.mounted) Navigator.pop(ctx);
-                    } catch (e) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(e.toString())));
                     }
-                  }
-                },
-                child: Text(isEdit ? 'Simpan Perubahan' : 'Simpan Barang'),
-              ),
-              const SizedBox(height: 24),
-            ],
+                  },
+                  child: isSubmitting 
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                      : Text(isEdit ? 'Simpan Perubahan' : 'Simpan Barang'),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),

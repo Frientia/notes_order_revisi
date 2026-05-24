@@ -11,13 +11,16 @@ class PencatatanModel {
 
   factory PencatatanModel.fromJson(Map<String, dynamic> json) {
     String tglStr = json['tgl_pencatatan'].toString();
+    
     if (!tglStr.endsWith('Z') && !tglStr.contains('+')) {
       tglStr += 'Z'; 
     }
+    
+    DateTime wibTime = DateTime.parse(tglStr).add(const Duration(hours: 7));
 
     return PencatatanModel(
       idPencatatan: json['id_pencatatan'],
-      tglPencatatan: DateTime.parse(tglStr).toLocal(), 
+      tglPencatatan: wibTime, // Menggunakan waktu yang sudah +7 Jam
       totalHarga: double.parse(json['total_harga'].toString()),
     );
   }

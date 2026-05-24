@@ -21,6 +21,9 @@ class BarangRepository {
   }
 
   Future<BarangModel> addBarang(BarangModel barang) async {
+    final cekBarang = await _supabase.from('barang').select().eq('nama_barang', barang.namaBarang);
+    if (cekBarang.isNotEmpty) throw Exception('Nama Barang sudah terdaftar!');
+
     final response = await _supabase
         .from('barang')
         .insert(barang.toJson())
@@ -33,13 +36,14 @@ class BarangRepository {
     await _supabase
         .from('barang')
         .update(barang.toJson())
-        .eq('id_barang', barang.idBarang!);
+        .eq('id_barang', int.parse(barang.idBarang!));
   }
 
+  // Parameter disinkronkan menggunakan String
   Future<void> deleteBarang(String idBarang) async {
     await _supabase
         .from('barang')
         .delete()
-        .eq('id_barang', idBarang);
+        .eq('id_barang', int.parse(idBarang));
   }
 }

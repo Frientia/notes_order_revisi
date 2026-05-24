@@ -1,7 +1,30 @@
+enum BarangKategori {
+  kelistrikan('Kelistrikan'),
+  filterOli('Filter Oli'),
+  filterSolar('Filter Solar'),
+  filterUdara('Filter Udara'),
+  karetRem('Karet Rem'),
+  karetChamber('Karet Chamber'),
+  repairKit('Repair Kit'),
+  perPolos('Per Polos'),
+  umum('Umum'); // Sebagai fallback/cadangan jika ada data lama
+
+  final String label;
+  const BarangKategori(this.label);
+
+  static BarangKategori? fromString(String? text) {
+    if (text == null) return null;
+    return BarangKategori.values.firstWhere(
+      (e) => e.label.toLowerCase() == text.toLowerCase(),
+      orElse: () => BarangKategori.umum,
+    );
+  }
+}
+
 class BarangModel {
   final String? idBarang;
   final String namaBarang;
-  final String? kategori;
+  final BarangKategori? kategori;
   final int stock;
 
   BarangModel({
@@ -13,18 +36,18 @@ class BarangModel {
 
   factory BarangModel.fromJson(Map<String, dynamic> json) {
     return BarangModel(
-      idBarang: json['id_barang']?.toString(), 
+      idBarang: json['id_barang']?.toString(),
       namaBarang: json['nama_barang']?.toString() ?? '',
-      kategori: json['kategori']?.toString(),
+      kategori: BarangKategori.fromString(json['kategori']?.toString()), 
       stock: json['stock'] != null ? int.tryParse(json['stock'].toString()) ?? 0 : 0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      if (idBarang != null) 'id_barang': idBarang,
+      if (idBarang != null && idBarang!.isNotEmpty) 'id_barang': int.tryParse(idBarang!),
       'nama_barang': namaBarang,
-      'kategori': kategori,
+      'kategori': kategori?.label, 
       'stock': stock,
     };
   }
@@ -32,7 +55,7 @@ class BarangModel {
   BarangModel copyWith({
     String? idBarang,
     String? namaBarang,
-    String? kategori,
+    BarangKategori? kategori,
     int? stock,
   }) {
     return BarangModel(

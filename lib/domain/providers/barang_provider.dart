@@ -11,7 +11,7 @@ class BarangController extends StateNotifier<AsyncValue<List<BarangModel>>> {
   final BarangRepository _repository;
 
   BarangController(this._repository) : super(const AsyncValue.loading()) {
-    fetchBarang(); 
+    fetchBarang();
   }
 
   Future<void> fetchBarang() async {
@@ -26,7 +26,7 @@ class BarangController extends StateNotifier<AsyncValue<List<BarangModel>>> {
         state = AsyncValue.data([...state.value!, newItem]);
       }
     } catch (e) {
-      throw Exception('Gagal menambah barang: $e');
+      throw Exception(e.toString());
     }
   }
 
@@ -43,6 +43,7 @@ class BarangController extends StateNotifier<AsyncValue<List<BarangModel>>> {
     }
   }
 
+  // Parameter disinkronkan menggunakan String
   Future<void> deleteBarang(String idBarang) async {
     try {
       await _repository.deleteBarang(idBarang);
