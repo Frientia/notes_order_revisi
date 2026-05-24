@@ -48,8 +48,9 @@ class PetugasDashboard extends ConsumerWidget {
           if (title == 'Data Barang') {
             context.push('/barang');
           }
-          // Anda bisa menambahkan else if untuk menu lain nanti, contoh:
-          // else if (title == 'Data Mobil') { context.push('/mobil'); }
+          if (title == 'Data Mobil') {
+            context.push('/mobil');
+          }
         },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

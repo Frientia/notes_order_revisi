@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:notes_order/presentation/auth/register_screen.dart';
+import 'package:notes_order/presentation/auth/waiting_verification_screen.dart';
+import 'package:notes_order/presentation/master_data/barang_screen.dart';
+import 'package:notes_order/presentation/master_data/mobil_screen.dart';
 
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/user_role_provider.dart';
+
+// Import Screens
 import '../../presentation/auth/login_screen.dart';
-import '../../presentation/auth/register_screen.dart';
-import '../../presentation/auth/waiting_verification_screen.dart';
 import '../../presentation/dashboard/petugas_dashboard.dart';
-import '../../presentation/dashboard/boss_dashboard.dart';
-import '../../presentation/master_data/barang_screen.dart'; // Pastikan ini di-import
+import '../../presentation/dashboard/boss_dashboard.dart';// Pastikan ini di-import
 
 class RouterNotifier extends ChangeNotifier {
   final Ref _ref;
@@ -84,8 +87,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/petugas-dashboard', builder: (context, state) => const PetugasDashboard()),
       GoRoute(path: '/boss-dashboard', builder: (context, state) => const BossDashboard()),
       
-      // Daftarkan rute halaman Barang di sini
       GoRoute(path: '/barang', builder: (context, state) => const BarangScreen()),
+      GoRoute(path: '/mobil', builder:(context, state) => const MobilScreen(),),
     ],
   );
 });
