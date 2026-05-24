@@ -13,11 +13,9 @@ class BarangModel {
 
   factory BarangModel.fromJson(Map<String, dynamic> json) {
     return BarangModel(
-      // Tambahkan .toString() di sini agar angka (seperti 8) otomatis diubah jadi teks "8"
       idBarang: json['id_barang']?.toString(), 
       namaBarang: json['nama_barang']?.toString() ?? '',
       kategori: json['kategori']?.toString(),
-      // Lakukan parsing aman untuk stock, jaga-jaga jika tipe datanya meleset
       stock: json['stock'] != null ? int.tryParse(json['stock'].toString()) ?? 0 : 0,
     );
   }

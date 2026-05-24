@@ -29,15 +29,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             _emailCtrl.text.trim(),
             _passwordCtrl.text.trim(),
           );
-          
-      // Cek error setelah fungsi login selesai
       final authState = ref.read(authControllerProvider);
       if (authState.hasError && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(authState.error.toString())),
         );
       }
-      // Jika sukses, router otomatis memindahkan karena mendeteksi authStateProvider berubah
     }
   }
 

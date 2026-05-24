@@ -17,7 +17,6 @@ class TransaksiRepository {
     required double grandTotal,
   }) async {
     try {
-      // 1. Buat Header Pencatatan terlebih dahulu
       final pencatatanResponse = await _supabase.from('pencatatan').insert({
         'total_harga': grandTotal,
         'firebase_uid': firebaseUid,
@@ -25,23 +24,19 @@ class TransaksiRepository {
       
       final int idPencatatan = pencatatanResponse['id_pencatatan'];
 
-      // 2. Proses tiap item di keranjang (Upload Storage -> Insert Kwitansi -> Insert Detail)
       for (var item in keranjang) {
-        // A. Upload file kwitansi milik item ini ke Storage
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final pathUpload = 'transaksi/${timestamp}_${item.imageName}';
         
         await _supabase.storage.from('bukti_pembayaran').uploadBinary(pathUpload, item.imageBytes);
         final imgUrl = _supabase.storage.from('bukti_pembayaran').getPublicUrl(pathUpload);
 
-        // B. Insert ke tabel kwitansi untuk mendapatkan id_kwitansi
         final kwitansiResponse = await _supabase.from('kwitansi').insert({
           'img_url': imgUrl,
         }).select('id_kwitansi').single();
         
         final int idKwitansi = kwitansiResponse['id_kwitansi'];
 
-        // C. Insert ke tabel detail_pencatatan
         await _supabase.from('detail_pencatatan').insert({
           'id_pencatatan': idPencatatan,
           'id_barang': int.parse(item.idBarang),
@@ -50,7 +45,7 @@ class TransaksiRepository {
           'id_kwitansi': idKwitansi,
           'qty': item.qty,
           'harga_pembelian_barang': item.hargaPembelian,
-          'status': item.statusPembayaran, // 'SELESAI' (Lunas) atau 'PENDING' (Hutang) per item/toko
+          'status': item.statusPembayaran,
         });
       }
     } catch (e) {

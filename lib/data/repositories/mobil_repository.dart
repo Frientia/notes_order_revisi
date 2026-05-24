@@ -21,7 +21,6 @@ class MobilRepository {
   }
 
   Future<MobilModel> addMobil(MobilModel mobil) async {
-    // Mengecek apakah no_plat sudah ada agar tidak error unique constraint
     final cekPlat = await _supabase.from('mobil').select().eq('no_plat', mobil.noPlat);
     if (cekPlat.isNotEmpty) throw Exception('Nomor Plat sudah terdaftar!');
 

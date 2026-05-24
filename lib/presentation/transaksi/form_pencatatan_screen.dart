@@ -10,6 +10,7 @@ import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/barang_provider.dart';
 import '../../domain/providers/mobil_provider.dart';
 import '../../domain/providers/keranjang_provider.dart';
+import '../../domain/providers/toko_provider.dart';
 import '../../core/utils/formatters.dart'; 
 
 class FormPencatatanScreen extends ConsumerStatefulWidget {
@@ -22,11 +23,10 @@ class FormPencatatanScreen extends ConsumerStatefulWidget {
 class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   final _formItemKey = GlobalKey<FormState>();
   
-  // State Form Input Per Item
   String? _selectedIdBarang;
   String? _selectedIdMobil;
-  String? _selectedIdToko = '1'; // DUMMY: Anggap ID Toko 1
-  String _statusPembayaranItem = 'SELESAI'; // Default Lunas untuk item ini
+  String? _selectedIdToko;
+  String _statusPembayaranItem = 'SELESAI';
   
   final _qtyCtrl = TextEditingController();
   final _hargaCtrl = TextEditingController();
@@ -58,8 +58,8 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
 
   void _tambahKeKeranjang() {
     if (_formItemKey.currentState!.validate()) {
-      if (_selectedIdBarang == null || _selectedIdMobil == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih Barang dan Mobil!')));
+      if (_selectedIdBarang == null || _selectedIdMobil == null || _selectedIdToko == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lengkapi semua field!')));
         return;
       }
       if (_imageBytes == null) {
@@ -69,17 +69,19 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
 
       final barangList = ref.read(barangControllerProvider).value ?? [];
       final mobilList = ref.read(mobilControllerProvider).value ?? [];
+      final tokoList = ref.read(tokoControllerProvider).value ?? [];
       
       final barang = barangList.firstWhere((b) => b.idBarang == _selectedIdBarang);
       final mobil = mobilList.firstWhere((m) => m.idMobil == _selectedIdMobil);
+      final toko = tokoList.firstWhere((t) => t.idToko == _selectedIdToko);
 
       final item = KeranjangItem(
         idBarang: barang.idBarang!,
         namaBarang: barang.namaBarang,
         idMobil: mobil.idMobil!,
         noPlatMobil: mobil.noPlat,
-        idToko: _selectedIdToko!,
-        namaToko: 'Toko Dummy', 
+        idToko: toko.idToko!,
+        namaToko: toko.namaToko,
         qty: int.parse(_qtyCtrl.text),
         hargaPembelian: double.parse(_hargaCtrl.text),
         statusPembayaran: _statusPembayaranItem,
@@ -89,12 +91,12 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
 
       ref.read(keranjangProvider.notifier).tambahItem(item);
       
-      // Reset form input item
       _qtyCtrl.clear();
       _hargaCtrl.clear();
       setState(() {
         _selectedIdBarang = null;
         _selectedIdMobil = null;
+        _selectedIdToko = null;
         _imageKwitansi = null;
         _imageBytes = null;
         _statusPembayaranItem = 'SELESAI';
@@ -115,7 +117,6 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
       final uid = ref.read(authStateProvider).value!.uid;
       final total = ref.read(keranjangProvider.notifier).grandTotal;
       
-      // Panggil fungsi simpan multi-toko
       await ref.read(transaksiRepositoryProvider).simpanTransaksiMultitoko(
         firebaseUid: uid,
         keranjang: keranjang,
@@ -127,7 +128,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Transaksi Berhasil Disimpan!'), backgroundColor: Colors.green)
         );
-        context.pop(); // Kembali ke dashboard
+        context.pop();
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
@@ -140,6 +141,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   Widget build(BuildContext context) {
     final barangState = ref.watch(barangControllerProvider);
     final mobilState = ref.watch(mobilControllerProvider);
+    final tokoState = ref.watch(tokoControllerProvider);
     final keranjang = ref.watch(keranjangProvider);
     final grandTotal = ref.watch(keranjangProvider.notifier).grandTotal;
 
@@ -150,7 +152,6 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
         : ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // --- BAGIAN 1: FORM INPUT ITEM (Termasuk Kwitansi per Item) ---
           Card(
             elevation: 3,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -177,6 +178,13 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                       onChanged: (v) => setState(() => _selectedIdMobil = v),
                     ),
                     const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _selectedIdToko,
+                      decoration: const InputDecoration(labelText: 'Pilih Toko', isDense: true),
+                      items: tokoState.valueOrNull?.map((t) => DropdownMenuItem(value: t.idToko.toString(), child: Text(t.namaToko))).toList(),
+                      onChanged: (v) => setState(() => _selectedIdToko = v),
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
@@ -201,7 +209,6 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // Status & Upload Kwitansi Khusus Item Ini
                     DropdownButtonFormField<String>(
                       value: _statusPembayaranItem,
                       decoration: const InputDecoration(labelText: 'Status Pembayaran Item', border: OutlineInputBorder()),
@@ -241,7 +248,6 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
           ),
           const SizedBox(height: 24),
 
-          // --- BAGIAN 2: DAFTAR KERANJANG ---
           const Text('Daftar Pembelian', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ListView.builder(
             shrinkWrap: true,
@@ -291,7 +297,6 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
           ),
           const SizedBox(height: 32),
 
-          // --- BAGIAN 3: FINALISASI ---
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 50),

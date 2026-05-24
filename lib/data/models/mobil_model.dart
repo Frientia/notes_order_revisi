@@ -13,7 +13,6 @@ class MobilModel {
 
   factory MobilModel.fromJson(Map<String, dynamic> json) {
     return MobilModel(
-      // Aman dari error tipe data (int vs String)
       idMobil: json['id_mobil']?.toString(),
       noPlat: json['no_plat']?.toString() ?? '',
       kategori: json['kategori']?.toString(),

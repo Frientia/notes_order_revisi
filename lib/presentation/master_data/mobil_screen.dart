@@ -104,7 +104,7 @@ class MobilScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               TextFormField(
                 controller: platCtrl,
-                textCapitalization: TextCapitalization.characters, // Otomatis huruf besar
+                textCapitalization: TextCapitalization.characters,
                 decoration: const InputDecoration(labelText: 'No. Plat (Contoh: B 1234 CD)', border: OutlineInputBorder()),
                 validator: (val) => val!.isEmpty ? 'No. Plat wajib diisi' : null,
               ),
@@ -139,7 +139,6 @@ class MobilScreen extends ConsumerWidget {
                       }
                       if (ctx.mounted) Navigator.pop(ctx);
                     } catch (e) {
-                      // Membersihkan pesan error jika ada awalan "Exception:"
                       final errMsg = e.toString().replaceAll('Exception: ', '');
                       ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(errMsg), backgroundColor: Colors.red));
                     }

@@ -13,18 +13,16 @@ class UserModel {
     this.emailVerified = false,
   });
 
-  // Mapping dari database Supabase ke Object Dart
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       firebaseUid: json['firebase_uid'] ?? '',
       namaUser: json['nama_user'] ?? '',
       email: json['email'] ?? '',
-      role: json['role'] ?? 'petugas', // Default fallback
+      role: json['role'] ?? 'petugas',
       emailVerified: json['email_verified'] ?? false,
     );
   }
-
-  // Mapping dari Object Dart ke database Supabase
+  
   Map<String, dynamic> toJson() {
     return {
       'firebase_uid': firebaseUid,

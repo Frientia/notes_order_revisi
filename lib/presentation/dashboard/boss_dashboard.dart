@@ -33,7 +33,6 @@ class BossDashboard extends ConsumerWidget {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: () {
-                // TODO: Navigasi ke Halaman Laporan & Cetak PDF
               },
               icon: const Icon(Icons.picture_as_pdf),
               label: const Text('Lihat & Cetak Laporan Transaksi'),

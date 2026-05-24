@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart'; // 1. PASTIKAN IMPORT INI ADA
+import 'package:go_router/go_router.dart';
 import '../../data/repositories/auth_repository.dart';
 
 class PetugasDashboard extends ConsumerWidget {
@@ -26,7 +26,6 @@ class PetugasDashboard extends ConsumerWidget {
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
         children: [
-          // Parameter 'context' dikirim agar bisa digunakan untuk navigasi di dalam method
           _buildMenuCard(
             context,
             Icons.inventory,
@@ -64,9 +63,8 @@ class PetugasDashboard extends ConsumerWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(
           12,
-        ), // Efek ripple air mengikuti lengkungan kartu
+        ),
         onTap: () {
-          // 2. KODE NAVIGASI HARUS BERADA DI SINI
           if (title == 'Data Barang') {
             context.push('/barang');
           }
@@ -78,6 +76,9 @@ class PetugasDashboard extends ConsumerWidget {
           }
           if (title == 'Catat Pembelian') {
             context.push('/pencatatan');
+          }
+          if (title == 'Riwayat') {
+            context.push('/riwayat');
           }
         },
         child: Column(

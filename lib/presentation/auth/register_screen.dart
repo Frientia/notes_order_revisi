@@ -26,14 +26,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   void _submitRegister() async {
     if (_formKey.currentState!.validate()) {
-      // Panggil fungsi register dari AuthController
       await ref.read(authControllerProvider.notifier).register(
             _namaCtrl.text.trim(),
             _emailCtrl.text.trim(),
             _passwordCtrl.text.trim(),
           );
 
-      // Cek apakah ada error setelah proses selesai
       final authState = ref.read(authControllerProvider);
       if (authState.hasError && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -43,22 +41,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
         );
       } else if (mounted) {
-        // Jika sukses, tampilkan pesan sukses
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Registrasi berhasil! Silakan tunggu diarahkan.'),
             backgroundColor: Colors.green,
           ),
         );
-        // GoRouter akan otomatis menangkap perubahan state login 
-        // dan memindahkan user ke Dashboard
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Pantau status loading dari AuthController
     final authState = ref.watch(authControllerProvider);
     final isLoading = authState.isLoading;
 

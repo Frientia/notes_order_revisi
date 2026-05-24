@@ -11,10 +11,9 @@ class KeranjangItem {
   final double hargaPembelian;
   final double subtotal;
   
-  // Pindahan dari tingkat global ke tingkat per item:
-  final String statusPembayaran; // 'SELESAI' atau 'PENDING'
-  final Uint8List imageBytes;    // Byte gambar kwitansi untuk item ini
-  final String imageName;        // Nama file gambar
+  final String statusPembayaran; 
+  final Uint8List imageBytes;   
+  final String imageName; 
 
   KeranjangItem({
     required this.idBarang,

@@ -11,7 +11,6 @@ class BarangRepository {
 
   BarangRepository(this._supabase);
 
-  // Ambil semua data (Read)
   Future<List<BarangModel>> getBarang() async {
     final response = await _supabase
         .from('barang')
@@ -21,7 +20,6 @@ class BarangRepository {
     return response.map((e) => BarangModel.fromJson(e)).toList();
   }
 
-  // Tambah data (Create)
   Future<BarangModel> addBarang(BarangModel barang) async {
     final response = await _supabase
         .from('barang')
@@ -31,7 +29,6 @@ class BarangRepository {
     return BarangModel.fromJson(response);
   }
 
-  // Perbarui data (Update)
   Future<void> updateBarang(BarangModel barang) async {
     await _supabase
         .from('barang')
@@ -39,7 +36,6 @@ class BarangRepository {
         .eq('id_barang', barang.idBarang!);
   }
 
-  // Hapus data (Delete)
   Future<void> deleteBarang(String idBarang) async {
     await _supabase
         .from('barang')
