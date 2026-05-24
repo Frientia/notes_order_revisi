@@ -21,7 +21,6 @@ class MobilRepository {
   }
 
   Future<MobilModel> addMobil(MobilModel mobil) async {
-    // Mengecek apakah no_plat sudah ada agar tidak error unique constraint
     final cekPlat = await _supabase
         .from('mobil')
         .select()
@@ -40,10 +39,11 @@ class MobilRepository {
     await _supabase
         .from('mobil')
         .update(mobil.toJson())
-        .eq('id_mobil', mobil.idMobil!);
+        .eq('id_mobil', int.parse(mobil.idMobil!)); // UBAH: Parse ke int untuk Supabase
   }
 
-  Future<void> deleteMobil(int idMobil) async {
-    await _supabase.from('mobil').delete().eq('id_mobil', idMobil);
+  // UBAH: Parameter menjadi String
+  Future<void> deleteMobil(String idMobil) async {
+    await _supabase.from('mobil').delete().eq('id_mobil', int.parse(idMobil)); // UBAH: Parse ke int
   }
 }

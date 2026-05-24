@@ -85,7 +85,7 @@ class MobilScreen extends ConsumerWidget {
             onPressed: () {
               ref
                   .read(mobilControllerProvider.notifier)
-                  .deleteMobil(mobil.idMobil!);
+                  .deleteMobil(mobil.idMobil!); // UBAH: Hapus "as int", gunakan "!"
               Navigator.pop(ctx);
             },
             child: const Text('Hapus', style: TextStyle(color: Colors.red)),
@@ -197,7 +197,7 @@ class MobilScreen extends ConsumerWidget {
                               });
 
                               final newMobil = MobilModel(
-                                idMobil: mobil?.idMobil,
+                                idMobil: mobil?.idMobil ?? '',
                                 noPlat: platCtrl.text.trim().toUpperCase(),
                                 kategori: selectedKategori,
                                 tahun: int.tryParse(tahunCtrl.text.trim()),

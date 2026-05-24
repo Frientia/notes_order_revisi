@@ -46,7 +46,8 @@ class MobilController extends StateNotifier<AsyncValue<List<MobilModel>>> {
     }
   }
 
-  Future<void> deleteMobil(int idMobil) async {
+  // UBAH: Parameter menjadi String
+  Future<void> deleteMobil(String idMobil) async {
     try {
       await _repository.deleteMobil(idMobil);
       if (state.hasValue) {
