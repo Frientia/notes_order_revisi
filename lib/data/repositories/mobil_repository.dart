@@ -16,13 +16,16 @@ class MobilRepository {
         .from('mobil')
         .select()
         .order('no_plat', ascending: true);
-    
+
     return response.map((e) => MobilModel.fromJson(e)).toList();
   }
 
   Future<MobilModel> addMobil(MobilModel mobil) async {
     // Mengecek apakah no_plat sudah ada agar tidak error unique constraint
-    final cekPlat = await _supabase.from('mobil').select().eq('no_plat', mobil.noPlat);
+    final cekPlat = await _supabase
+        .from('mobil')
+        .select()
+        .eq('no_plat', mobil.noPlat);
     if (cekPlat.isNotEmpty) throw Exception('Nomor Plat sudah terdaftar!');
 
     final response = await _supabase
@@ -40,10 +43,7 @@ class MobilRepository {
         .eq('id_mobil', mobil.idMobil!);
   }
 
-  Future<void> deleteMobil(String idMobil) async {
-    await _supabase
-        .from('mobil')
-        .delete()
-        .eq('id_mobil', idMobil);
+  Future<void> deleteMobil(int idMobil) async {
+    await _supabase.from('mobil').delete().eq('id_mobil', idMobil);
   }
 }
