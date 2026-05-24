@@ -17,7 +17,7 @@ class PetugasDashboard extends ConsumerWidget {
             onPressed: () async {
               await ref.read(authRepositoryProvider).logout();
             },
-          )
+          ),
         ],
       ),
       body: GridView.count(
@@ -27,22 +27,44 @@ class PetugasDashboard extends ConsumerWidget {
         mainAxisSpacing: 16,
         children: [
           // Parameter 'context' dikirim agar bisa digunakan untuk navigasi di dalam method
-          _buildMenuCard(context, Icons.inventory, 'Data Barang', Colors.orange),
-          _buildMenuCard(context, Icons.directions_car, 'Data Mobil', Colors.blue),
+          _buildMenuCard(
+            context,
+            Icons.inventory,
+            'Data Barang',
+            Colors.orange,
+          ),
+          _buildMenuCard(
+            context,
+            Icons.directions_car,
+            'Data Mobil',
+            Colors.blue,
+          ),
           _buildMenuCard(context, Icons.store, 'Data Toko', Colors.green),
-          _buildMenuCard(context, Icons.add_shopping_cart, 'Catat Pembelian', Colors.purple),
+          _buildMenuCard(
+            context,
+            Icons.add_shopping_cart,
+            'Catat Pembelian',
+            Colors.purple,
+          ),
           _buildMenuCard(context, Icons.history, 'Riwayat', Colors.teal),
         ],
       ),
     );
   }
 
-  Widget _buildMenuCard(BuildContext context, IconData icon, String title, Color color) {
+  Widget _buildMenuCard(
+    BuildContext context,
+    IconData icon,
+    String title,
+    Color color,
+  ) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12), // Efek ripple air mengikuti lengkungan kartu
+        borderRadius: BorderRadius.circular(
+          12,
+        ), // Efek ripple air mengikuti lengkungan kartu
         onTap: () {
           // 2. KODE NAVIGASI HARUS BERADA DI SINI
           if (title == 'Data Barang') {
@@ -64,7 +86,7 @@ class PetugasDashboard extends ConsumerWidget {
             Icon(icon, size: 48, color: color),
             const SizedBox(height: 12),
             Text(
-              title, 
+              title,
               style: const TextStyle(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
