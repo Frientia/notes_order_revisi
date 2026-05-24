@@ -8,7 +8,6 @@ class TokoScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Memantau state dari provider toko
     final tokoState = ref.watch(tokoControllerProvider);
 
     return Scaffold(
@@ -26,7 +25,7 @@ class TokoScreen extends ConsumerWidget {
                 child: ListTile(
                   leading: const CircleAvatar(
                     backgroundColor:
-                        Colors.green, // Dibedakan warnanya agar variatif
+                        Colors.green,
                     child: Icon(Icons.store, color: Colors.white),
                   ),
                   title: Text(
@@ -111,7 +110,7 @@ class TokoScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled:
-          true, // Agar bottom sheet bisa naik saat keyboard muncul
+          true,
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(ctx).viewInsets.bottom,
@@ -135,7 +134,7 @@ class TokoScreen extends ConsumerWidget {
               TextFormField(
                 controller: namaTokoCtrl,
                 textCapitalization:
-                    TextCapitalization.words, // Tiap awal kata huruf besar
+                    TextCapitalization.words,
                 decoration: const InputDecoration(
                   labelText: 'Nama Toko',
                   border: OutlineInputBorder(),
@@ -176,12 +175,12 @@ class TokoScreen extends ConsumerWidget {
                   minimumSize: const Size.square(50),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor:
-                      Colors.green, // Warna tombol disamakan dengan tema FAB
+                      Colors.green,
                 ),
                 onPressed: () async {
                   if (formKey.currentState!.validate()) {
                     final newToko = TokoModel(
-                      idToko: toko?.idToko,
+                      idToko: toko!.idToko,
                       namaToko: namaTokoCtrl.text.trim(),
                       noTelpon: telponCtrl.text.trim(),
                       alamat: alamatCtrl.text.trim(),
@@ -199,7 +198,6 @@ class TokoScreen extends ConsumerWidget {
                       }
                       if (ctx.mounted) Navigator.pop(ctx);
                     } catch (e) {
-                      // Membersihkan pesan error jika ada awalan "Exception:"
                       final errMsg = e.toString().replaceAll('Exception: ', '');
                       ScaffoldMessenger.of(ctx).showSnackBar(
                         SnackBar(

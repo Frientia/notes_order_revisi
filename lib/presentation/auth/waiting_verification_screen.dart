@@ -14,14 +14,13 @@ class WaitingVerificationScreen extends ConsumerStatefulWidget {
 
 class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationScreen> {
   Timer? _timer;
-  int _secondsLeft = 180; // Waktu tunggu maksimal: 3 menit (180 detik)
+  int _secondsLeft = 180;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final SupabaseClient _supabase = Supabase.instance.client;
 
   @override
   void initState() {
     super.initState();
-    // Jalankan timer berkala setiap 3 detik
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
       _checkEmailVerified();
     });
@@ -29,7 +28,7 @@ class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationS
 
   @override
   void dispose() {
-    _timer?.cancel(); // Pastikan menghancurkan timer saat keluar halaman agar tidak memory leak
+    _timer?.cancel();
     super.dispose();
   }
 
@@ -37,41 +36,33 @@ class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationS
     final user = _auth.currentUser;
     if (user == null) return;
 
-    // 1. Wajib panggil reload() agar Firebase mengambil status terbaru dari server cloud
     await user.reload();
 
-    // 2. Hitung mundur waktu timeout
     setState(() {
       _secondsLeft -= 3;
     });
 
-    // 3. JIKA SUKSES DIVERIFIKASI
     if (_auth.currentUser!.emailVerified) {
       _timer?.cancel();
 
-      // Sinkronisasi status terverifikasi ke Supabase
       await _supabase
           .from('users')
           .update({'email_verified': true})
           .eq('firebase_uid', user.uid);
 
-      await user.getIdToken(true); // Refresh token agar GoRouter mendeteksi perubahan emailVerified
+      await user.getIdToken(true);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Email berhasil diverifikasi!'), backgroundColor: Colors.green),
         );
-        // GoRouter otomatis mendeteksi perubahan state user.emailVerified 
-        // dan akan memindahkan user ke Dashboard yang sesuai.
       }
       return;
     }
 
-    // 4. JIKA WAKTU HABIS (TIMEOUT) & Belum Terverifikasi
     if (_secondsLeft <= 0) {
       _timer?.cancel();
       
-      // Paksa logout dari Firebase
       await ref.read(authRepositoryProvider).logout();
 
       if (mounted) {
@@ -82,15 +73,12 @@ class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationS
             duration: Duration(seconds: 5),
           ),
         );
-        // GoRouter otomatis mendeteksi user menjadi null (logout) 
-        // dan mengembalikannya ke halaman /login
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Mengubah detik menjadi format menit:detik (MM:SS)
     final minutes = (_secondsLeft / 60).floor().toString().padLeft(2, '0');
     final seconds = (_secondsLeft % 60).toString().padLeft(2, '0');
 

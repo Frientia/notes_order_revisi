@@ -8,7 +8,6 @@ class BarangScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Pantau state barang dari Controller
     final barangState = ref.watch(barangControllerProvider);
 
     return Scaffold(
@@ -60,7 +59,6 @@ class BarangScreen extends ConsumerWidget {
     );
   }
 
-  // Fungsi untuk memunculkan konfirmasi hapus
   void _confirmDelete(BuildContext context, WidgetRef ref, BarangModel barang) {
     showDialog(
       context: context,
@@ -81,7 +79,6 @@ class BarangScreen extends ConsumerWidget {
     );
   }
 
-  // Fungsi untuk memunculkan form Tambah/Edit (BottomSheet)
   void _showFormBottomSheet(BuildContext context, WidgetRef ref, {BarangModel? barang}) {
     final isEdit = barang != null;
     final namaCtrl = TextEditingController(text: barang?.namaBarang);
@@ -91,7 +88,7 @@ class BarangScreen extends ConsumerWidget {
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Agar form tidak tertutup keyboard
+      isScrollControlled: true,
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(ctx).viewInsets.bottom,
