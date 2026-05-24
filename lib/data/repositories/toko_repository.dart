@@ -43,7 +43,8 @@ class TokoRepository {
         .eq('id_toko', toko.idToko!);
   }
 
-  Future<void> deleteToko(String idToko) async {
+  // Ubah String idToko menjadi int idToko
+  Future<void> deleteToko(int idToko) async {
     await _supabase.from('toko').delete().eq('id_toko', idToko);
   }
 }

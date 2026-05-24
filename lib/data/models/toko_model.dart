@@ -1,5 +1,5 @@
 class TokoModel {
-  final String? idToko;
+  final int? idToko; // <-- Ubah dari String? menjadi int?
   final String namaToko;
   final String alamat;
   final String noTelpon;
@@ -13,7 +13,7 @@ class TokoModel {
 
   factory TokoModel.fromJson(Map<String, dynamic> json) {
     return TokoModel(
-      idToko: json['id_toko'] as String?,
+      idToko: json['id_toko'] as int?, // <-- Pastikan di-cast sebagai int?
       namaToko: json['nama_toko'] as String,
       alamat: json['alamat'] as String,
       noTelpon: json['no_telpon'] as String,

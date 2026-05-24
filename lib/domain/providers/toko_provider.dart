@@ -47,10 +47,9 @@ class TokoController extends StateNotifier<AsyncValue<List<TokoModel>>> {
     }
   }
 
-  Future<void> deleteToko(String idToko) async {
+  Future<void> deleteToko(int idToko) async {
     try {
       await _repository.deleteToko(idToko);
-      // Hapus item dari memori
       if (state.hasValue) {
         state = AsyncValue.data(
           state.value!.where((e) => e.idToko != idToko).toList(),

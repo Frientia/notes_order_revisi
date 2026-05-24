@@ -5,14 +5,14 @@ import 'package:notes_order/presentation/auth/register_screen.dart';
 import 'package:notes_order/presentation/auth/waiting_verification_screen.dart';
 import 'package:notes_order/presentation/master_data/barang_screen.dart';
 import 'package:notes_order/presentation/master_data/mobil_screen.dart';
-
+import 'package:notes_order/presentation/master_data/toko_screen.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/user_role_provider.dart';
 
 // Import Screens
 import '../../presentation/auth/login_screen.dart';
 import '../../presentation/dashboard/petugas_dashboard.dart';
-import '../../presentation/dashboard/boss_dashboard.dart';// Pastikan ini di-import
+import '../../presentation/dashboard/boss_dashboard.dart'; // Pastikan ini di-import
 
 class RouterNotifier extends ChangeNotifier {
   final Ref _ref;
@@ -40,7 +40,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final user = authState.value;
       final isLoggedIn = user != null;
       final currentLoc = state.uri.toString();
-      
+
       final isGoingToLogin = currentLoc == '/login';
       final isGoingToRegister = currentLoc == '/register';
       final isGoingToWaiting = currentLoc == '/waiting-verification';
@@ -64,7 +64,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final role = roleAsyncValue.value;
 
       // Petugas atau Boss HANYA di-redirect ke dashboard jika mereka berada di halaman auth / root (/)
-      if (isGoingToLogin || isGoingToRegister || isGoingToWaiting || currentLoc == '/') {
+      if (isGoingToLogin ||
+          isGoingToRegister ||
+          isGoingToWaiting ||
+          currentLoc == '/') {
         if (role == 'petugas') return '/petugas-dashboard';
         if (role == 'boss') return '/boss-dashboard';
       }
@@ -83,13 +86,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-      GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
-      GoRoute(path: '/waiting-verification', builder: (context, state) => const WaitingVerificationScreen()),
-      GoRoute(path: '/petugas-dashboard', builder: (context, state) => const PetugasDashboard()),
-      GoRoute(path: '/boss-dashboard', builder: (context, state) => const BossDashboard()),
-      
-      GoRoute(path: '/barang', builder: (context, state) => const BarangScreen()),
-      GoRoute(path: '/mobil', builder:(context, state) => const MobilScreen(),),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/waiting-verification',
+        builder: (context, state) => const WaitingVerificationScreen(),
+      ),
+      GoRoute(
+        path: '/petugas-dashboard',
+        builder: (context, state) => const PetugasDashboard(),
+      ),
+      GoRoute(
+        path: '/boss-dashboard',
+        builder: (context, state) => const BossDashboard(),
+      ),
+
+      GoRoute(
+        path: '/barang',
+        builder: (context, state) => const BarangScreen(),
+      ),
+      GoRoute(path: '/mobil', builder: (context, state) => const MobilScreen()),
+      GoRoute(path: '/toko', builder: (context, state) => const TokoScreen()),
     ],
   );
 });
