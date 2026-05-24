@@ -1,0 +1,49 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/barang_model.dart';
+
+final barangRepositoryProvider = Provider<BarangRepository>((ref) {
+  return BarangRepository(Supabase.instance.client);
+});
+
+class BarangRepository {
+  final SupabaseClient _supabase;
+
+  BarangRepository(this._supabase);
+
+  // Ambil semua data (Read)
+  Future<List<BarangModel>> getBarang() async {
+    final response = await _supabase
+        .from('barang')
+        .select()
+        .order('nama_barang', ascending: true);
+    
+    return response.map((e) => BarangModel.fromJson(e)).toList();
+  }
+
+  // Tambah data (Create)
+  Future<BarangModel> addBarang(BarangModel barang) async {
+    final response = await _supabase
+        .from('barang')
+        .insert(barang.toJson())
+        .select()
+        .single();
+    return BarangModel.fromJson(response);
+  }
+
+  // Perbarui data (Update)
+  Future<void> updateBarang(BarangModel barang) async {
+    await _supabase
+        .from('barang')
+        .update(barang.toJson())
+        .eq('id_barang', barang.idBarang!);
+  }
+
+  // Hapus data (Delete)
+  Future<void> deleteBarang(String idBarang) async {
+    await _supabase
+        .from('barang')
+        .delete()
+        .eq('id_barang', idBarang);
+  }
+}
