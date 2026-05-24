@@ -45,6 +45,7 @@ dependencies:
   intl: ^0.18.1 # Untuk format tanggal dan mata uang (Rupiah)
   firebase_core: ^4.9.0
   firebase_auth: ^6.5.1
+  image_picker: ^1.2.2
 
 dev_dependencies:
   flutter_test:

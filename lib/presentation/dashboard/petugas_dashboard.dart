@@ -51,6 +51,12 @@ class PetugasDashboard extends ConsumerWidget {
           if (title == 'Data Mobil') {
             context.push('/mobil');
           }
+          if (title == 'Data Toko') {
+            context.push('/toko');
+          }
+          if (title == 'Catat Pembelian') {
+            context.push('/pencatatan');
+          }
         },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

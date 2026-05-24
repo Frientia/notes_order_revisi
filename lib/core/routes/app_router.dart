@@ -5,6 +5,7 @@ import 'package:notes_order/presentation/auth/register_screen.dart';
 import 'package:notes_order/presentation/auth/waiting_verification_screen.dart';
 import 'package:notes_order/presentation/master_data/barang_screen.dart';
 import 'package:notes_order/presentation/master_data/mobil_screen.dart';
+import 'package:notes_order/presentation/transaksi/form_pencatatan_screen.dart';
 
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/user_role_provider.dart';
@@ -19,6 +20,7 @@ class RouterNotifier extends ChangeNotifier {
 
   RouterNotifier(this._ref) {
     _ref.listen(authStateProvider, (_, __) => notifyListeners());
+    _ref.listen(userRoleProvider, (_, __) => notifyListeners());
   }
 }
 
@@ -89,6 +91,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       
       GoRoute(path: '/barang', builder: (context, state) => const BarangScreen()),
       GoRoute(path: '/mobil', builder:(context, state) => const MobilScreen(),),
+      GoRoute(path: '/pencatatan', builder: (context, state) => const FormPencatatanScreen()),
     ],
   );
 });
