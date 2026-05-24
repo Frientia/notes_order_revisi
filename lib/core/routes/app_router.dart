@@ -19,6 +19,7 @@ class RouterNotifier extends ChangeNotifier {
 
   RouterNotifier(this._ref) {
     _ref.listen(authStateProvider, (_, __) => notifyListeners());
+    _ref.listen(userRoleProvider, (_, __) => notifyListeners());
   }
 }
 
