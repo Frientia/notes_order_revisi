@@ -100,10 +100,8 @@ class BossDashboard extends ConsumerWidget {
                     leading: const Icon(Icons.store, color: Colors.teal),
                     title: const Text('Rekap Hutang Toko'),
                     onTap: () {
-                      Navigator.pop(context);
-                      context.push(
-                        '/rekap-hutang',
-                      ); // Pindah ke rute halaman hutang (jika sudah ada)
+                      Navigator.pop(context); // Menutup sidebar
+                      context.push('/rekap-hutang'); // Mengarah ke rute hutang
                     },
                   ),
 

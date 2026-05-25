@@ -6,6 +6,7 @@ import 'package:notes_order/presentation/auth/waiting_verification_screen.dart';
 import 'package:notes_order/presentation/master_data/barang_screen.dart';
 import 'package:notes_order/presentation/master_data/mobil_screen.dart';
 import 'package:notes_order/presentation/master_data/toko_screen.dart';
+import 'package:notes_order/presentation/report/rekap_hutang_screen.dart';
 import 'package:notes_order/presentation/transaksi/detail_riwayat_screen.dart';
 import 'package:notes_order/presentation/transaksi/form_pencatatan_screen.dart';
 import 'package:notes_order/presentation/transaksi/riwayat_screen.dart';
@@ -106,6 +107,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/log-petugas',
         builder: (context, state) => const LogPetugasScreen(),
+      ),
+      GoRoute(
+        path: '/rekap-hutang',
+        builder: (context, state) => const RekapHutangScreen(),
       ),
       GoRoute(
         path: '/pencatatan',
