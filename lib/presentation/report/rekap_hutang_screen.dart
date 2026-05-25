@@ -491,7 +491,7 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
     );
   }
 
-  // --- MUNCULKAN RINCIAN NOTA PER TOKO ---
+  // --- MUNCULKAN RINCIAN NOTA YANG BISA DIBUKA-TUTUP (EXPANSION) ---
   void _showDetailHutangToko(
     BuildContext context,
     int idToko,
@@ -526,14 +526,14 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Text(
-                    'Rincian Hutang: $namaToko',
+                    'Hutang: $namaToko',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const Divider(height: 24),
+                const Divider(height: 16),
                 Expanded(
                   child: Consumer(
                     builder: (context, ref, child) {
@@ -546,95 +546,211 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                             const Center(child: CircularProgressIndicator()),
                         error: (err, stack) =>
                             Center(child: Text('Gagal memuat rincian:\n$err')),
-                        data: (rincianData) {
-                          if (rincianData.isEmpty) {
+                        data: (listGrupNota) {
+                          if (listGrupNota.isEmpty) {
                             return const Center(
                               child: Text('Tidak ada rincian data ditemukan.'),
                             );
                           }
 
-                          return ListView.separated(
+                          return ListView.builder(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
+                              horizontal: 16,
                               vertical: 8,
                             ),
-                            itemCount: rincianData.length,
-                            separatorBuilder: (context, index) =>
-                                const Divider(),
+                            itemCount: listGrupNota.length,
                             itemBuilder: (context, index) {
-                              final item = rincianData[index];
+                              final grup = listGrupNota[index];
+                              final tglFormat = DateFormat(
+                                'dd MMM yyyy',
+                              ).format(grup.tanggal);
 
-                              final pencatatan =
-                                  item['pencatatan'] as Map<String, dynamic>?;
-                              final tglString = pencatatan?['tgl_pencatatan'];
-                              final idNota =
-                                  pencatatan?['id_pencatatan'] ?? '-';
-
-                              String tglFormat = '-';
-                              if (tglString != null) {
-                                tglFormat = DateFormat(
-                                  'dd MMM yyyy',
-                                ).format(DateTime.parse(tglString));
-                              }
-
-                              final qty = item['qty'] as int;
-                              final harga =
-                                  (item['harga_pembelian_barang'] as num)
-                                      .toDouble();
-                              final subtotal = qty * harga;
-
-                              return Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.receipt_long,
-                                      color: Colors.red,
-                                      size: 20,
+                              // Menggunakan Theme untuk menghilangkan garis pembatas bawaan ExpansionTile
+                              return Theme(
+                                data: Theme.of(
+                                  context,
+                                ).copyWith(dividerColor: Colors.transparent),
+                                child: Card(
+                                  elevation: 0,
+                                  color: Colors.white,
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: BorderSide(
+                                      color: Colors.grey.shade200,
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Nota ID: #$idNota',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '$qty Item x ${AppFormatters.rupiah(harga)}',
-                                          style: const TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        Text(
-                                          'Tanggal: $tglFormat',
-                                          style: const TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
+                                  child: ExpansionTile(
+                                    tilePadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 4,
                                     ),
-                                  ),
-                                  Text(
-                                    AppFormatters.rupiah(subtotal),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.red,
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.withOpacity(0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.receipt_long,
+                                        color: Colors.red,
+                                        size: 20,
+                                      ),
                                     ),
+                                    title: Text(
+                                      'Nota ID: #${grup.idNota}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      '$tglFormat • ${grup.jumlahMacamBarang} Jenis Barang',
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    trailing: Text(
+                                      AppFormatters.rupiah(
+                                        grup.totalHutangNota,
+                                      ),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    children: [
+                                      // --- KONTEN SAAT NOTA DIBUKA ---
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.only(
+                                          left: 16,
+                                          right: 16,
+                                          bottom: 16,
+                                          top: 4,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Divider(height: 16),
+                                            const Text(
+                                              'Rincian Pembelian:',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+
+                                            // Looping memunculkan barang-barang di nota tersebut
+                                            ...grup.rincianBarang.map((item) {
+                                              return Padding(
+                                                padding: const EdgeInsets.only(
+                                                  bottom: 8.0,
+                                                ),
+                                                child: Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    const Text(
+                                                      '• ',
+                                                      style: TextStyle(
+                                                        color: Colors.grey,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Text(
+                                                            item['nama_barang'],
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  fontSize: 14,
+                                                                ),
+                                                          ),
+                                                          Text(
+                                                            '${item['qty']} x ${AppFormatters.rupiah(item['harga'])}',
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .grey,
+                                                                  fontSize: 13,
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      AppFormatters.rupiah(
+                                                        item['subtotal'],
+                                                      ),
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }),
+
+                                            const SizedBox(height: 12),
+                                            // Tombol Cek Kwitansi Spesifik untuk Nota Ini
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: OutlinedButton.icon(
+                                                icon: const Icon(
+                                                  Icons.image,
+                                                  size: 18,
+                                                ),
+                                                label: const Text(
+                                                  'Lihat Foto Kwitansi',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                style: OutlinedButton.styleFrom(
+                                                  foregroundColor:
+                                                      Colors.indigo,
+                                                  side: const BorderSide(
+                                                    color: Colors.indigo,
+                                                  ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                ),
+                                                onPressed: () =>
+                                                    _showKwitansiDialog(
+                                                      context,
+                                                      ref,
+                                                      grup.idNota,
+                                                      tglFormat,
+                                                      grup.totalHutangNota,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               );
                             },
                           );
@@ -644,6 +760,163 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --- POP-UP BUKTI KWITANSI YANG SUDAH DIPERSINGKAT ---
+  void _showKwitansiDialog(
+    BuildContext context,
+    WidgetRef ref,
+    int idNota,
+    String tanggal,
+    double totalHutang,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Bukti Kwitansi',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const Divider(height: 24),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'ID Nota:',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      Text(
+                        '#$idNota',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Tanggal:',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      Text(
+                        tanggal,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Total Hutang:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        AppFormatters.rupiah(totalHutang),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final urlState = ref.watch(urlKwitansiProvider(idNota));
+
+                      return urlState.when(
+                        loading: () => const Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: CircularProgressIndicator(),
+                        ),
+                        error: (err, stack) => const Text(
+                          'Gagal memuat gambar kwitansi.',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                        data: (url) {
+                          if (url == null || url.isEmpty) {
+                            return Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Column(
+                                children: [
+                                  Icon(
+                                    Icons.image_not_supported,
+                                    color: Colors.grey,
+                                    size: 40,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Tidak ada foto kwitansi di-upload.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              url,
+                              fit: BoxFit.cover,
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return const Padding(
+                                      padding: EdgeInsets.all(20),
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  },
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Text(
+                                    'Gagal merender gambar',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueGrey[800],
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Tutup'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );

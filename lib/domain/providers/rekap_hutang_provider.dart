@@ -37,12 +37,10 @@ final sortirHutangProvider = StateProvider<SortirHutang>(
 );
 final bulanHutangProvider = StateProvider<DateTime?>((ref) => null);
 
-// --- 1. PROVIDER DATA MENTAH UTAMA ---
 final rekapHutangRawProvider = FutureProvider.autoDispose<List<_DetailHutangRaw>>((
   ref,
 ) async {
   final supabase = Supabase.instance.client;
-
   final response = await supabase
       .from('detail_pencatatan')
       .select(
@@ -71,7 +69,6 @@ final rekapHutangRawProvider = FutureProvider.autoDispose<List<_DetailHutangRaw>
   return listMentah;
 });
 
-// --- 2. PROVIDER FILTER GABUNGAN ---
 final rekapHutangFilteredProvider =
     Provider.autoDispose<AsyncValue<List<RekapHutangModel>>>((ref) {
       final rawState = ref.watch(rekapHutangRawProvider);
@@ -131,21 +128,111 @@ final rekapHutangFilteredProvider =
       });
     });
 
-// --- 3. PROVIDER BARU: UNTUK MENGAMBIL RINCIAN NOTA PER TOKO ---
+// --- CLASS BARU UNTUK MENAMPUNG KELOMPOK NOTA ---
+class GrupNotaHutang {
+  final int idNota;
+  final DateTime tanggal;
+  final double totalHutangNota;
+  final int jumlahMacamBarang;
+  final List<Map<String, dynamic>> rincianBarang;
+
+  GrupNotaHutang({
+    required this.idNota,
+    required this.tanggal,
+    required this.totalHutangNota,
+    required this.jumlahMacamBarang,
+    required this.rincianBarang,
+  });
+}
+
+// --- UPDATE: MENGELOMPOKKAN BARANG BERDASARKAN ID NOTA ---
 final detailHutangTokoProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, int>((ref, idToko) async {
+    .family<List<GrupNotaHutang>, int>((ref, idToko) async {
       final supabase = Supabase.instance.client;
 
-      // Ambil detail pencatatan yang PENDING di toko spesifik tersebut
       final response = await supabase
           .from('detail_pencatatan')
           .select(
-            'qty, harga_pembelian_barang, pencatatan!inner(id_pencatatan, tgl_pencatatan)',
+            'qty, harga_pembelian_barang, barang(nama_barang), pencatatan!inner(id_pencatatan, tgl_pencatatan)',
           )
           .eq('status', 'PENDING')
           .eq('pencatatan.status_transaksi', 'SELESAI')
           .eq('id_toko', idToko)
           .order('id_detail_pencatatan', ascending: false);
 
-      return List<Map<String, dynamic>>.from(response);
+      // Map untuk mengelompokkan berdasarkan id_pencatatan (ID Nota)
+      final Map<int, GrupNotaHutang> groupedMap = {};
+
+      for (var row in response) {
+        final pencatatan = row['pencatatan'] as Map<String, dynamic>?;
+        if (pencatatan == null) continue;
+
+        final idNota = pencatatan['id_pencatatan'] as int? ?? 0;
+        final tglString = pencatatan['tgl_pencatatan'];
+        final tanggal = tglString != null
+            ? DateTime.parse(tglString)
+            : DateTime.now();
+
+        final qty = row['qty'] as int;
+        final harga = (row['harga_pembelian_barang'] as num).toDouble();
+        final subtotal = qty * harga;
+
+        final dataBarang = row['barang'] as Map<String, dynamic>?;
+        final namaBarang = dataBarang?['nama_barang'] ?? 'Barang Tanpa Nama';
+
+        // Bungkus rincian 1 barang
+        final rincianItem = {
+          'nama_barang': namaBarang,
+          'qty': qty,
+          'harga': harga,
+          'subtotal': subtotal,
+        };
+
+        if (groupedMap.containsKey(idNota)) {
+          // Jika Nota sudah ada, tambahkan barang ini ke dalamnya
+          final existingGroup = groupedMap[idNota]!;
+          existingGroup.rincianBarang.add(rincianItem);
+
+          groupedMap[idNota] = GrupNotaHutang(
+            idNota: idNota,
+            tanggal: existingGroup.tanggal,
+            totalHutangNota: existingGroup.totalHutangNota + subtotal,
+            jumlahMacamBarang: existingGroup.jumlahMacamBarang + 1,
+            rincianBarang: existingGroup.rincianBarang,
+          );
+        } else {
+          // Jika Nota baru muncul, buat grup baru
+          groupedMap[idNota] = GrupNotaHutang(
+            idNota: idNota,
+            tanggal: tanggal,
+            totalHutangNota: subtotal,
+            jumlahMacamBarang: 1,
+            rincianBarang: [rincianItem],
+          );
+        }
+      }
+
+      // Ubah ke List dan urutkan dari Nota terbaru
+      final listGroup = groupedMap.values.toList();
+      listGroup.sort((a, b) => b.idNota.compareTo(a.idNota));
+
+      return listGroup;
     });
+
+// --- BARU: PROVIDER UNTUK MENGAMBIL GAMBAR KWITANSI ---
+final urlKwitansiProvider = FutureProvider.autoDispose.family<String?, int>((
+  ref,
+  idPencatatan,
+) async {
+  final supabase = Supabase.instance.client;
+
+  // Asumsi: id_kwitansi nilainya sama dengan id_pencatatan, atau ada relasi langsung.
+  // Jika kolom fk-nya berbeda (misal 'id_pencatatan' ada di tabel kwitansi), ganti 'id_kwitansi' dengan kolom tersebut.
+  final response = await supabase
+      .from('kwitansi')
+      .select('img_url')
+      .eq('id_kwitansi', idPencatatan)
+      .maybeSingle();
+
+  return response?['img_url'] as String?;
+});
