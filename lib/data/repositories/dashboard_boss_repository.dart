@@ -29,17 +29,24 @@ class DashboardRepository {
     // Tarik batas waktu 6 bulan ke belakang dari tanggal 1
     final sixMonthsAgo = DateTime(now.year, now.month - 5, 1);
 
-    // 1. QUERY PENCATATAN (Untuk total transaksi & belanja 6 bulan terakhir)
+    // 1. QUERY PENCATATAN (REVISI: Hanya ambil yang status_transaksi = 'SELESAI')
     final pencatatanRes = await _supabase
         .from('pencatatan')
         .select('tgl_pencatatan, total_harga')
+        .eq('status_transaksi', 'SELESAI') // <--- FILTER DITAMBAHKAN DI SINI
         .gte('tgl_pencatatan', sixMonthsAgo.toIso8601String());
 
-    // 2. QUERY HUTANG (Ambil dari detail_pencatatan yang statusnya PENDING)
+    // 2. QUERY HUTANG (REVISI: Inner join untuk memastikan pencatatan utamanya juga sudah SELESAI)
     final hutangRes = await _supabase
         .from('detail_pencatatan')
-        .select('qty, harga_pembelian_barang')
-        .eq('status', 'PENDING');
+        .select(
+          'qty, harga_pembelian_barang, pencatatan!inner(status_transaksi)',
+        )
+        .eq('status', 'PENDING') // Status item hutang
+        .eq(
+          'pencatatan.status_transaksi',
+          'SELESAI',
+        ); // <--- FILTER RELASI DITAMBAHKAN
 
     // -- PERHITUNGAN TOTAL HUTANG --
     double totalHutang = 0;
@@ -71,7 +78,7 @@ class DashboardRepository {
       'Des',
     ];
 
-    // Inisialisasi label bulan di sumbu X (contoh: Jan, Feb, Mar...)
+    // Inisialisasi label bulan di sumbu X
     for (int i = 0; i < 6; i++) {
       DateTime target = DateTime(now.year, now.month - (5 - i), 1);
       labelBulan[i] = namaBulan[target.month - 1];

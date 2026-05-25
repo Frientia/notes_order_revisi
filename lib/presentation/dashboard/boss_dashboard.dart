@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/dashboard_boss_repository.dart';
 import '../../domain/providers/dashboard_boss_provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/utils/formatters.dart'; // Aktifkan formatter kembali
 
 class BossDashboard extends ConsumerWidget {
@@ -37,7 +38,6 @@ class BossDashboard extends ConsumerWidget {
 
       // --- HAMBURGER MENU (SIDEBAR) ---
       drawer: Drawer(
-        // (Isi Drawer tetap sama seperti sebelumnya, saya persingkat agar fokus pada Body)
         child: Column(
           children: [
             UserAccountsDrawerHeader(
@@ -67,32 +67,59 @@ class BossDashboard extends ConsumerWidget {
                       ),
                     ),
                   ),
+
+                  // 1. MENU RIWAYAT KESELURUHAN
                   ListTile(
                     leading: const Icon(Icons.list_alt, color: Colors.indigo),
                     title: const Text('Riwayat Keseluruhan'),
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.pop(context); // 1. Tutup drawer terlebih dahulu
+                      context.push(
+                        '/riwayat',
+                      ); // 2. Pindah ke rute halaman riwayat
+                    },
                   ),
+
+                  // 2. MENU AKUNTABILITAS PETUGAS (Pengganti rekap kendaraan)
                   ListTile(
                     leading: const Icon(
-                      Icons.local_shipping,
+                      Icons.assignment_ind,
                       color: Colors.orange,
-                    ),
-                    title: const Text('Rekap per Kendaraan'),
-                    onTap: () {},
+                    ), // Ganti ikon agar sesuai petugas
+                    title: const Text('Akuntabilitas Petugas'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push(
+                        '/log-petugas',
+                      ); // Pindah ke rute halaman log petugas
+                    },
                   ),
+
+                  // 3. MENU REKAP HUTANG TOKO
                   ListTile(
                     leading: const Icon(Icons.store, color: Colors.teal),
                     title: const Text('Rekap Hutang Toko'),
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push(
+                        '/rekap-hutang',
+                      ); // Pindah ke rute halaman hutang (jika sudah ada)
+                    },
                   ),
+
                   const Divider(),
+
+                  // 4. MENU CETAK LAPORAN PDF
                   ListTile(
                     leading: const Icon(
                       Icons.picture_as_pdf,
                       color: Colors.redAccent,
                     ),
                     title: const Text('Cetak Laporan PDF'),
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push('/cetak-pdf');
+                    },
                   ),
                 ],
               ),
