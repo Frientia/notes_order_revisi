@@ -1,13 +1,20 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fl_chart/fl_chart.dart'; // Import fl_chart
+import 'package:fl_chart/fl_chart.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/dashboard_boss_repository.dart';
+import '../../domain/providers/dashboard_boss_provider.dart';
+import '../../core/utils/formatters.dart'; // Aktifkan formatter kembali
 
 class BossDashboard extends ConsumerWidget {
   const BossDashboard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Memantau state data dashboard (Loading / Error / Success)
+    final dashboardState = ref.watch(dashboardDataProvider);
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -18,20 +25,19 @@ class BossDashboard extends ConsumerWidget {
         backgroundColor: Colors.blueGrey[800],
         foregroundColor: Colors.white,
         elevation: 0,
-        // Hamburger menu icon otomatis muncul di kiri karena kita pakai Drawer
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Keluar',
-            onPressed: () async {
-              await ref.read(authRepositoryProvider).logout();
-            },
+            onPressed: () async =>
+                await ref.read(authRepositoryProvider).logout(),
           ),
         ],
       ),
 
       // --- HAMBURGER MENU (SIDEBAR) ---
       drawer: Drawer(
+        // (Isi Drawer tetap sama seperti sebelumnya, saya persingkat agar fokus pada Body)
         child: Column(
           children: [
             UserAccountsDrawerHeader(
@@ -64,10 +70,7 @@ class BossDashboard extends ConsumerWidget {
                   ListTile(
                     leading: const Icon(Icons.list_alt, color: Colors.indigo),
                     title: const Text('Riwayat Keseluruhan'),
-                    onTap: () {
-                      Navigator.pop(context); // Tutup drawer
-                      // TODO: Navigasi
-                    },
+                    onTap: () {},
                   ),
                   ListTile(
                     leading: const Icon(
@@ -75,18 +78,12 @@ class BossDashboard extends ConsumerWidget {
                       color: Colors.orange,
                     ),
                     title: const Text('Rekap per Kendaraan'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      // TODO: Navigasi
-                    },
+                    onTap: () {},
                   ),
                   ListTile(
                     leading: const Icon(Icons.store, color: Colors.teal),
                     title: const Text('Rekap Hutang Toko'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      // TODO: Navigasi
-                    },
+                    onTap: () {},
                   ),
                   const Divider(),
                   ListTile(
@@ -95,10 +92,7 @@ class BossDashboard extends ConsumerWidget {
                       color: Colors.redAccent,
                     ),
                     title: const Text('Cetak Laporan PDF'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      // TODO: Navigasi
-                    },
+                    onTap: () {},
                   ),
                 ],
               ),
@@ -107,98 +101,108 @@ class BossDashboard extends ConsumerWidget {
         ),
       ),
 
-      // --- BODY UTAMA (KPI & GRAFIK) ---
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Sapaan
-            const Text(
-              'Ringkasan Operasional',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-
-            // SECTION: KPI CARDS
-            Row(
-              children: [
-                Expanded(
-                  child: _buildKpiCard(
-                    title: 'Belanja (Bulan Ini)',
-                    value: 'Rp 15.4M', // Dummy
-                    icon: Icons.account_balance_wallet,
-                    color: Colors.blue,
+      // --- BODY UTAMA DENGAN RIVERPOD STATE ---
+      body: dashboardState.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(
+          child: Text('Terjadi Kesalahan:\n$err', textAlign: TextAlign.center),
+        ),
+        data: (data) {
+          return RefreshIndicator(
+            // Fitur tarik ke bawah untuk me-refresh data
+            onRefresh: () async => ref.refresh(dashboardDataProvider),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Ringkasan Operasional',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildKpiCard(
-                    title: 'Total Hutang',
-                    value: 'Rp 4.2M', // Dummy
-                    icon: Icons.money_off,
-                    color: Colors.red,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildKpiCard(
-              title: 'Total Transaksi (Nota)',
-              value: '128 Nota', // Dummy
-              icon: Icons.receipt_long,
-              color: Colors.green,
-              isFullWidth: true,
-            ),
-            const SizedBox(height: 32),
+                  const SizedBox(height: 16),
 
-            // SECTION: GRAFIK ANALISIS
-            const Text(
-              'Grafik Pengadaan Sparepart (6 Bulan Terakhir)',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _buildLegendItem(Colors.blue, 'Uang Belanja (Juta)'),
-                const SizedBox(width: 16),
-                _buildLegendItem(Colors.green, 'Jml Transaksi'),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Container Grafik
-            Container(
-              height: 300, // Tinggi grafik
-              padding: const EdgeInsets.only(
-                right: 16,
-                left: 8,
-                top: 24,
-                bottom: 12,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+                  // SECTION: KPI CARDS MEMAKAI DATA ASLI
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildKpiCard(
+                          title: 'Belanja (Bulan Ini)',
+                          value: AppFormatters.rupiah(
+                            data.totalBelanjaBulanIni,
+                          ),
+                          icon: Icons.account_balance_wallet,
+                          color: Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildKpiCard(
+                          title: 'Total Hutang',
+                          value: AppFormatters.rupiah(data.totalHutang),
+                          icon: Icons.money_off,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 12),
+                  _buildKpiCard(
+                    title: 'Total Transaksi (Bulan Ini)',
+                    value: '${data.totalTransaksiBulanIni} Nota',
+                    icon: Icons.receipt_long,
+                    color: Colors.green,
+                    isFullWidth: true,
+                  ),
+                  const SizedBox(height: 32),
+
+                  // SECTION: GRAFIK MEMAKAI DATA ASLI
+                  const Text(
+                    'Grafik Pengadaan Sparepart (6 Bulan)',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _buildLegendItem(Colors.blue, 'Uang Belanja (Jutaan)'),
+                      const SizedBox(width: 16),
+                      _buildLegendItem(Colors.green, 'Jml Transaksi'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  Container(
+                    height: 300,
+                    padding: const EdgeInsets.only(
+                      right: 16,
+                      left: 8,
+                      top: 24,
+                      bottom: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: LineChart(_buildCombinedChartData(data)),
+                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
-              child: LineChart(
-                _buildCombinedChartData(), // Memanggil fungsi grafik
-              ),
             ),
-            const SizedBox(height: 24),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  // --- WIDGET HELPER: KPI CARD ---
   Widget _buildKpiCard({
     required String title,
     required String value,
@@ -246,7 +250,7 @@ class BossDashboard extends ConsumerWidget {
                 Text(
                   value,
                   style: TextStyle(
-                    fontSize: isFullWidth ? 22 : 16,
+                    fontSize: isFullWidth ? 22 : 15,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
@@ -260,7 +264,6 @@ class BossDashboard extends ConsumerWidget {
     );
   }
 
-  // --- WIDGET HELPER: LEGEND GRAFIK ---
   Widget _buildLegendItem(Color color, String text) {
     return Row(
       children: [
@@ -278,8 +281,25 @@ class BossDashboard extends ConsumerWidget {
     );
   }
 
-  // --- KONFIGURASI GRAFIK FL_CHART ---
-  LineChartData _buildCombinedChartData() {
+  // --- KONFIGURASI GRAFIK DINAMIS ---
+  LineChartData _buildCombinedChartData(DashboardData data) {
+    // Mengubah Rupiah menjadi satuan "Juta" agar muat di sumbu Y grafik
+    List<double> belanjaJutaan = data.belanja6Bulan
+        .map((e) => e / 1000000)
+        .toList();
+
+    // Mencari batas atas grafik (Max Y) secara dinamis agar grafik tidak terpotong
+    double maxBelanja = belanjaJutaan.isNotEmpty
+        ? belanjaJutaan.reduce(max)
+        : 0;
+    double maxTransaksi = data.transaksi6Bulan.isNotEmpty
+        ? data.transaksi6Bulan.reduce(max).toDouble()
+        : 0;
+    double highestY = max(maxBelanja, maxTransaksi);
+    double maxYLimit = highestY > 0
+        ? highestY + (highestY * 0.2)
+        : 10; // Tambah 20% ruang kosong di atas
+
     return LineChartData(
       gridData: const FlGridData(show: true, drawVerticalLine: false),
       titlesData: FlTitlesData(
@@ -287,19 +307,18 @@ class BossDashboard extends ConsumerWidget {
           sideTitles: SideTitles(showTitles: false),
         ),
         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        // Label Bulan di sumbu X
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 30,
             interval: 1,
             getTitlesWidget: (value, meta) {
-              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
-              if (value.toInt() >= 0 && value.toInt() < months.length) {
+              int index = value.toInt();
+              if (index >= 0 && index < 6) {
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
-                    months[value.toInt()],
+                    data.labelBulan[index],
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -311,32 +330,23 @@ class BossDashboard extends ConsumerWidget {
             },
           ),
         ),
-        // Label Angka di sumbu Y (Sebelah kiri)
         leftTitles: const AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 40,
-            interval: 20,
-          ),
+          sideTitles: SideTitles(showTitles: true, reservedSize: 35),
         ),
       ),
       borderData: FlBorderData(show: false),
       minX: 0,
       maxX: 5,
       minY: 0,
-      maxY: 100, // Skala maksimal (Disesuaikan nanti dengan data asli)
-      // GARIS GRAFIK
+      maxY: maxYLimit, // Skala Y Dinamis
+
       lineBarsData: [
-        // 1. Garis Total Belanja (Warna Biru) - Misal skalanya dlm puluhan juta
+        // 1. Garis Belanja (Satuan Juta)
         LineChartBarData(
-          spots: const [
-            FlSpot(0, 45),
-            FlSpot(1, 60),
-            FlSpot(2, 55),
-            FlSpot(3, 80),
-            FlSpot(4, 65),
-            FlSpot(5, 90),
-          ],
+          spots: List.generate(
+            6,
+            (i) => FlSpot(i.toDouble(), belanjaJutaan[i]),
+          ),
           isCurved: true,
           color: Colors.blue,
           barWidth: 4,
@@ -347,16 +357,12 @@ class BossDashboard extends ConsumerWidget {
             color: Colors.blue.withOpacity(0.1),
           ),
         ),
-        // 2. Garis Total Transaksi (Warna Hijau) - Misal jumlah nota per bulan
+        // 2. Garis Transaksi
         LineChartBarData(
-          spots: const [
-            FlSpot(0, 20),
-            FlSpot(1, 25),
-            FlSpot(2, 22),
-            FlSpot(3, 40),
-            FlSpot(4, 30),
-            FlSpot(5, 50),
-          ],
+          spots: List.generate(
+            6,
+            (i) => FlSpot(i.toDouble(), data.transaksi6Bulan[i].toDouble()),
+          ),
           isCurved: true,
           color: Colors.green,
           barWidth: 4,
