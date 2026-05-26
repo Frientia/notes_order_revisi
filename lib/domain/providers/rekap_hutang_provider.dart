@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:notes_order/domain/providers/dashboard_boss_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RekapHutangModel {
@@ -236,3 +237,88 @@ final urlKwitansiProvider = FutureProvider.autoDispose.family<String?, int>((
 
   return response?['img_url'] as String?;
 });
+
+// --- FITUR BARU: PROVIDER UNTUK AKSI LUNASKAN SEMUA ---
+// --- FITUR LUNASKAN: COMPATIBLE UNTUK SEMUA VERSI SUPABASE ---
+final aksiHutangProvider = Provider((ref) => AksiHutang(ref));
+
+class AksiHutang {
+  final Ref ref;
+  AksiHutang(this.ref);
+
+  Future<void> lunaskanSemuaBulanIni(int idToko, DateTime? filterBulan) async {
+    final supabase = Supabase.instance.client;
+
+    // 1. Siapkan query select data pending
+    final selectQuery = supabase
+        .from('detail_pencatatan')
+        .select(
+          'id_detail_pencatatan, pencatatan!inner(tgl_pencatatan, status_transaksi)',
+        )
+        .eq('id_toko', idToko)
+        .eq('status', 'PENDING')
+        .eq('pencatatan.status_transaksi', 'SELESAI');
+
+    // Eksekusi select dengan pengaman lintas versi SDK
+    dynamic rawData;
+    try {
+      final legacyRes = await (selectQuery as dynamic).execute();
+      rawData = legacyRes.data;
+    } catch (_) {
+      rawData = await selectQuery;
+    }
+
+    // Standardisasi konversi data list
+    List<dynamic> listData = [];
+    if (rawData is List) {
+      listData = rawData;
+    } else if (rawData != null && rawData is Map && rawData['data'] is List) {
+      listData = rawData['data'] as List<dynamic>;
+    }
+
+    List<int> idsToUpdate = [];
+    for (var item in listData) {
+      if (item['pencatatan'] == null) continue;
+      final tglString = item['pencatatan']['tgl_pencatatan'];
+      if (tglString == null) continue;
+
+      final tgl = DateTime.parse(tglString.toString());
+
+      if (filterBulan != null) {
+        if (tgl.year == filterBulan.year && tgl.month == filterBulan.month) {
+          idsToUpdate.add(item['id_detail_pencatatan'] as int);
+        }
+      } else {
+        idsToUpdate.add(item['id_detail_pencatatan'] as int);
+      }
+    }
+
+    if (idsToUpdate.isEmpty) {
+      throw 'Tidak ada data tagihan yang sesuai untuk dilunasi.';
+    }
+
+    // 2. Eksekusi update status menjadi SELESAI satu per satu dengan safe-fallback
+    for (final id in idsToUpdate) {
+      // 1. Buat dan simpan kuerinya di SINI (di luar blok try-catch)
+      final updateQuery = supabase
+          .from('detail_pencatatan')
+          .update({
+            'status': 'SELESAI',
+          }) // <-- Menggunakan SELESAI sesuai opsi 1
+          .eq('id_detail_pencatatan', id);
+
+      // 2. Baru dieksekusi
+      try {
+        await (updateQuery as dynamic)
+            .execute(); // Untuk SDK Supabase versi lama
+      } catch (_) {
+        await updateQuery; // Untuk SDK Supabase versi baru (Ini yang akan menghilangkan garis kuning unused variable)
+      }
+    }
+
+    // 3. Refresh state provider agar data di layar langsung diperbarui
+    ref.invalidate(rekapHutangRawProvider);
+    ref.invalidate(detailHutangTokoProvider(idToko));
+    ref.invalidate(dashboardRepositoryProvider);
+  }
+}

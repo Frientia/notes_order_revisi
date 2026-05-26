@@ -175,7 +175,6 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
             ),
           ),
           const SizedBox(height: 12),
-
           Expanded(
             child: hutangFilteredState.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -355,17 +354,19 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                         label: const Text('Semua Waktu'),
                         selected: currentBulan == null,
                         onSelected: (selected) {
-                          if (selected)
+                          if (selected) {
                             ref.read(bulanHutangProvider.notifier).state = null;
+                          }
                         },
                       ),
                       ChoiceChip(
                         label: const Text('Bulan Ini'),
                         selected: isBulanIni,
                         onSelected: (selected) {
-                          if (selected)
+                          if (selected) {
                             ref.read(bulanHutangProvider.notifier).state =
                                 DateTime(now.year, now.month);
+                          }
                         },
                       ),
                       // TOMBOL PILIH BULAN CUSTOM
@@ -491,7 +492,7 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
     );
   }
 
-  // --- MUNCULKAN RINCIAN NOTA YANG BISA DIBUKA-TUTUP (EXPANSION) ---
+  // --- MUNCULKAN RINCIAN NOTA & FITUR LUNASKAN ---
   void _showDetailHutangToko(
     BuildContext context,
     int idToko,
@@ -506,7 +507,7 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
       ),
       builder: (sheetContext) {
         return FractionallySizedBox(
-          heightFactor: 0.65,
+          heightFactor: 0.70,
           child: Padding(
             padding: const EdgeInsets.only(top: 16),
             child: Column(
@@ -523,17 +524,140 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // --- HEADER: JUDUL DAN TOMBOL LUNASKAN ---
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    'Hutang: $namaToko',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Hutang: $namaToko',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+
+                      // TOMBOL LUNASKAN
+                      Consumer(
+                        builder: (context, ref, child) {
+                          return ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.check_circle_outline,
+                              size: 18,
+                            ),
+                            label: const Text(
+                              'Lunaskan',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: () {
+                              // --- DIALOG KONFIRMASI ---
+                              showDialog(
+                                context: context,
+                                builder: (dialogCtx) => AlertDialog(
+                                  title: const Text(
+                                    'Konfirmasi Pelunasan',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  content: Text(
+                                    'Apakah Anda yakin sudah melakukan pembayaran penuh ke $namaToko untuk periode yang dipilih ini?\n\nSemua nota di bawah ini akan diubah statusnya menjadi LUNAS.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(dialogCtx),
+                                      child: const Text(
+                                        'Batal',
+                                        style: TextStyle(color: Colors.grey),
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      onPressed: () async {
+                                        // 1. TUTUP DIALOG POPUP TERLEBIH DAHULU AGAR TIDAK MEMBEKU
+                                        Navigator.of(dialogCtx).pop();
+
+                                        try {
+                                          final filterBulan = ref.read(
+                                            bulanHutangProvider,
+                                          );
+
+                                          // 2. EKSEKUSI FUNGSI KE DATABASE
+                                          await ref
+                                              .read(aksiHutangProvider)
+                                              .lunaskanSemuaBulanIni(
+                                                idToko,
+                                                filterBulan,
+                                              );
+
+                                          // 3. JIKA BERHASIL: TUTUP BOTTOM SHEET & MUNCULKAN NOTIF HIJAU
+                                          if (context.mounted) {
+                                            Navigator.pop(sheetContext);
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  'Berhasil melunasi tagihan di $namaToko!',
+                                                ),
+                                                backgroundColor: Colors.green,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          // 4. JIKA GAGAL: MUNCULKAN NOTIF MERAH
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  'Gagal melunasi: $e',
+                                                ),
+                                                backgroundColor: Colors.red,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                duration: const Duration(
+                                                  seconds: 5,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      },
+                                      child: const Text('Ya, Lunaskan'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
                 const Divider(height: 16),
+
+                // --- DAFTAR NOTA AKORDION ---
                 Expanded(
                   child: Consumer(
                     builder: (context, ref, child) {
@@ -565,7 +689,6 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                                 'dd MMM yyyy',
                               ).format(grup.tanggal);
 
-                              // Menggunakan Theme untuk menghilangkan garis pembatas bawaan ExpansionTile
                               return Theme(
                                 data: Theme.of(
                                   context,
@@ -622,7 +745,6 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                                       ),
                                     ),
                                     children: [
-                                      // --- KONTEN SAAT NOTA DIBUKA ---
                                       Container(
                                         width: double.infinity,
                                         padding: const EdgeInsets.only(
@@ -646,7 +768,7 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                                             ),
                                             const SizedBox(height: 8),
 
-                                            // Looping memunculkan barang-barang di nota tersebut
+                                            // Rincian per barang
                                             ...grup.rincianBarang.map((item) {
                                               return Padding(
                                                 padding: const EdgeInsets.only(
@@ -708,7 +830,7 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                                             }),
 
                                             const SizedBox(height: 12),
-                                            // Tombol Cek Kwitansi Spesifik untuk Nota Ini
+                                            // Tombol Bukti Kwitansi
                                             SizedBox(
                                               width: double.infinity,
                                               child: OutlinedButton.icon(
@@ -767,7 +889,7 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
     );
   }
 
-  // --- POP-UP BUKTI KWITANSI YANG SUDAH DIPERSINGKAT ---
+  // --- KODE DIALOG POP-UP UNTUK MELIHAT FOTO KWITANSI ---
   void _showKwitansiDialog(
     BuildContext context,
     WidgetRef ref,
@@ -840,6 +962,7 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                   ),
                   const SizedBox(height: 24),
 
+                  // Memuat url gambar kwitansi dari database
                   Consumer(
                     builder: (context, ref, child) {
                       final urlState = ref.watch(urlKwitansiProvider(idNota));
