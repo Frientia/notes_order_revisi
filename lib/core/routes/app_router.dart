@@ -6,9 +6,11 @@ import 'package:notes_order/presentation/auth/waiting_verification_screen.dart';
 import 'package:notes_order/presentation/master_data/barang_screen.dart';
 import 'package:notes_order/presentation/master_data/mobil_screen.dart';
 import 'package:notes_order/presentation/master_data/toko_screen.dart';
+import 'package:notes_order/presentation/report/rekap_hutang_screen.dart';
 import 'package:notes_order/presentation/transaksi/detail_riwayat_screen.dart';
 import 'package:notes_order/presentation/transaksi/form_pencatatan_screen.dart';
 import 'package:notes_order/presentation/transaksi/riwayat_screen.dart';
+import 'package:notes_order/presentation/report/log_petugas_screen.dart';
 
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/user_role_provider.dart';
@@ -99,28 +101,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const BossDashboard(),
       ),
       GoRoute(
-        path: '/pencatatan', 
-        builder: (context, state) => const FormPencatatanScreen()
+        path: '/riwayat',
+        builder: (context, state) => const RiwayatScreen(),
       ),
       GoRoute(
-        path: '/mobil',
-        builder: (context, state) => const MobilScreen(),
+        path: '/log-petugas',
+        builder: (context, state) => const LogPetugasScreen(),
       ),
+      GoRoute(
+        path: '/rekap-hutang',
+        builder: (context, state) => const RekapHutangScreen(),
+      ),
+      GoRoute(
+        path: '/pencatatan',
+        builder: (context, state) => const FormPencatatanScreen(),
+      ),
+      GoRoute(path: '/mobil', builder: (context, state) => const MobilScreen()),
       GoRoute(
         path: '/barang',
         builder: (context, state) => const BarangScreen(),
       ),
+      GoRoute(path: '/toko', builder: (context, state) => const TokoScreen()),
       GoRoute(
-        path: '/toko', 
-        builder: (context, state) => const TokoScreen()
-        ),
-      GoRoute(
-        path: '/riwayat', 
-        builder: (context, state) => const RiwayatScreen()
+        path: '/riwayat',
+        builder: (context, state) => const RiwayatScreen(),
       ),
       GoRoute(
         path: '/detail-riwayat',
-        builder: (context, state) => DetailRiwayatScreen(idPencatatan: state.extra as int),
+        builder: (context, state) =>
+            DetailRiwayatScreen(idPencatatan: state.extra as int),
       ),
     ],
   );
