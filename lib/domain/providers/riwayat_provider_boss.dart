@@ -189,3 +189,77 @@ final riwayatFilteredProvider =
         return filteredList;
       });
     });
+// --- FITUR BARU UNTUK DASHBOARD: 5 PENCATATAN TERBARU HARI INI ---
+final recentTransaksiDashboardProvider =
+    FutureProvider.autoDispose<List<RiwayatTransaksi>>((ref) async {
+      final supabase = Supabase.instance.client;
+      final now = DateTime.now();
+
+      // Kita ambil 30 data terbaru terlebih dahulu untuk memastikan data hari ini terambil,
+      // lalu kita saring (filter) langsung di aplikasi untuk menghindari error zona waktu di database
+      final response = await supabase
+          .from('detail_pencatatan')
+          .select('''
+        id_detail_pencatatan,
+        qty,
+        harga_pembelian_barang,
+        status,
+        barang (nama_barang, kategori),
+        toko (nama_toko),
+        mobil (no_plat, kategori),
+        pencatatan!inner (
+          id_pencatatan,
+          tgl_pencatatan,
+          status_transaksi,
+          users (nama_user)
+        )
+      ''')
+          .eq('pencatatan.status_transaksi', 'SELESAI')
+          .order('id_detail_pencatatan', ascending: false)
+          .limit(30);
+
+      final List<dynamic> rawData = response as List<dynamic>;
+      List<RiwayatTransaksi> listHariIni = [];
+
+      for (var row in rawData) {
+        final pencatatan = row['pencatatan'];
+        if (pencatatan == null) continue;
+
+        final tglString = pencatatan['tgl_pencatatan'];
+        final tanggal = tglString != null
+            ? DateTime.parse(tglString)
+            : DateTime.now();
+
+        // Saring: Hanya masukkan ke daftar JIKA HARI INI
+        if (tanggal.year == now.year &&
+            tanggal.month == now.month &&
+            tanggal.day == now.day) {
+          final qty = row['qty'] as int? ?? 0;
+          final harga =
+              (row['harga_pembelian_barang'] as num?)?.toDouble() ?? 0.0;
+
+          listHariIni.add(
+            RiwayatTransaksi(
+              idDetail: row['id_detail_pencatatan'] as int,
+              idNota: pencatatan['id_pencatatan'] as int? ?? 0,
+              tanggal: tanggal,
+              namaBarang: row['barang']?['nama_barang'] ?? 'Barang Terhapus',
+              kategoriBarang: row['barang']?['kategori'] ?? '-',
+              namaToko: row['toko']?['nama_toko'] ?? '-',
+              nopolMobil: row['mobil']?['no_plat'] ?? '-',
+              kategoriMobil: row['mobil']?['kategori'] ?? '-',
+              namaPetugas: pencatatan['users']?['nama_user'] ?? 'Sistem',
+              qty: qty,
+              harga: harga,
+              subtotal: qty * harga,
+              status: row['status'] ?? 'PENDING',
+            ),
+          );
+        }
+
+        // Jika sudah terkumpul 5 data hari ini, hentikan perulangan (stop mencari)
+        if (listHariIni.length == 5) break;
+      }
+
+      return listHariIni;
+    });
