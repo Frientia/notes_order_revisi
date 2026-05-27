@@ -2,11 +2,14 @@ class PencatatanModel {
   final int idPencatatan;
   final DateTime tglPencatatan;
   final double totalHarga;
+  // TAMBAHAN: Variabel ini yang akan menampung daftar barang di dalam 1 nota
+  final List<DetailPencatatanModel> details; 
 
   PencatatanModel({
     required this.idPencatatan,
     required this.tglPencatatan,
     required this.totalHarga,
+    this.details = const [], // Beri nilai default list kosong
   });
 
   factory PencatatanModel.fromJson(Map<String, dynamic> json) {
@@ -18,10 +21,18 @@ class PencatatanModel {
     
     DateTime wibTime = DateTime.parse(tglStr).add(const Duration(hours: 7));
 
+    // TAMBAHAN: Logika untuk memproses (mapping) data detail anak dari Supabase
+    var detailsList = json['detail_pencatatan'] as List?;
+    List<DetailPencatatanModel> parsedDetails = [];
+    if (detailsList != null) {
+      parsedDetails = detailsList.map((e) => DetailPencatatanModel.fromJson(e)).toList();
+    }
+
     return PencatatanModel(
       idPencatatan: json['id_pencatatan'],
       tglPencatatan: wibTime, // Menggunakan waktu yang sudah +7 Jam
       totalHarga: double.parse(json['total_harga'].toString()),
+      details: parsedDetails, // Masukkan daftar barang ke model utama
     );
   }
 }
