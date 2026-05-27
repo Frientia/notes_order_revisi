@@ -7,8 +7,10 @@ class RiwayatTransaksi {
   final int idNota;
   final DateTime tanggal;
   final String namaBarang;
+  final String kategoriBarang;
   final String namaToko;
   final String nopolMobil;
+  final String kategoriMobil;
   final String namaPetugas;
   final int qty;
   final double harga;
@@ -20,8 +22,10 @@ class RiwayatTransaksi {
     required this.idNota,
     required this.tanggal,
     required this.namaBarang,
+    required this.kategoriBarang,
     required this.namaToko,
     required this.nopolMobil,
+    required this.kategoriMobil,
     required this.namaPetugas,
     required this.qty,
     required this.harga,
@@ -30,13 +34,30 @@ class RiwayatTransaksi {
   });
 }
 
-// 2. Enum & State untuk Filter
-enum FilterWaktu { semua, hariIni, mingguIni, bulanIni }
+// 2. Enum & State untuk Filter Kombinasi
+enum FilterWaktu { semua, hariIni, mingguIni, bulanIni, pilihTanggal }
 
 final filterWaktuRiwayatProvider = StateProvider.autoDispose<FilterWaktu>(
-  (ref) => FilterWaktu.bulanIni,
+  (ref) => FilterWaktu.hariIni,
 );
 final searchRiwayatProvider = StateProvider.autoDispose<String>((ref) => '');
+
+// Filter Lanjutan
+final filterTanggalCustomProvider = StateProvider.autoDispose<DateTime?>(
+  (ref) => null,
+);
+final filterKategoriBarangProvider = StateProvider.autoDispose<String?>(
+  (ref) => null,
+);
+final filterKategoriMobilProvider = StateProvider.autoDispose<String?>(
+  (ref) => null,
+);
+final filterPetugasProvider = StateProvider.autoDispose<String?>((ref) => null);
+// --- 2 FILTER BARU ---
+final filterNamaBarangProvider = StateProvider.autoDispose<String?>(
+  (ref) => null,
+);
+final filterNoPlatProvider = StateProvider.autoDispose<String?>((ref) => null);
 
 // 3. Provider Pengambil Data Riwayat
 final riwayatDataProvider = FutureProvider.autoDispose<List<RiwayatTransaksi>>((
@@ -44,9 +65,6 @@ final riwayatDataProvider = FutureProvider.autoDispose<List<RiwayatTransaksi>>((
 ) async {
   final supabase = Supabase.instance.client;
 
-  // PERHATIAN:
-  // Sesuaikan 'users(nama_user)' atau 'petugas(nama_petugas)' dengan tabel akun login petugas Anda.
-  // Sesuaikan 'mobil(nopol)' dengan tabel mobil Anda.
   final response = await supabase
       .from('detail_pencatatan')
       .select('''
@@ -54,9 +72,9 @@ final riwayatDataProvider = FutureProvider.autoDispose<List<RiwayatTransaksi>>((
         qty,
         harga_pembelian_barang,
         status,
-        barang (nama_barang),
+        barang (nama_barang, kategori),
         toko (nama_toko),
-        mobil (no_plat),
+        mobil (no_plat, kategori),
         pencatatan!inner (
           id_pencatatan,
           tgl_pencatatan,
@@ -87,9 +105,11 @@ final riwayatDataProvider = FutureProvider.autoDispose<List<RiwayatTransaksi>>((
         idDetail: row['id_detail_pencatatan'] as int,
         idNota: pencatatan['id_pencatatan'] as int? ?? 0,
         tanggal: tanggal,
-        namaBarang: row['barang']?['nama_barang'] ?? 'Barang Terhapus/Kosong',
+        namaBarang: row['barang']?['nama_barang'] ?? 'Barang Terhapus',
+        kategoriBarang: row['barang']?['kategori'] ?? 'Tanpa Kategori',
         namaToko: row['toko']?['nama_toko'] ?? 'Tanpa Toko',
         nopolMobil: row['mobil']?['no_plat'] ?? '-',
+        kategoriMobil: row['mobil']?['kategori'] ?? 'Tanpa Kategori',
         namaPetugas: pencatatan['users']?['nama_user'] ?? 'Sistem',
         qty: qty,
         harga: harga,
@@ -101,45 +121,70 @@ final riwayatDataProvider = FutureProvider.autoDispose<List<RiwayatTransaksi>>((
   return listRiwayat;
 });
 
-// 4. Provider yang Memfilter Data (Search & Waktu)
+// 4. Provider yang Memfilter Data (Kombinasi Semua Filter)
 final riwayatFilteredProvider =
     Provider.autoDispose<AsyncValue<List<RiwayatTransaksi>>>((ref) {
       final rawState = ref.watch(riwayatDataProvider);
+
       final filterWaktu = ref.watch(filterWaktuRiwayatProvider);
+      final customTanggal = ref.watch(filterTanggalCustomProvider);
       final query = ref.watch(searchRiwayatProvider).toLowerCase();
+
+      final filterKatBarang = ref.watch(filterKategoriBarangProvider);
+      final filterKatMobil = ref.watch(filterKategoriMobilProvider);
+      final filterPetugas = ref.watch(filterPetugasProvider);
+      final filterNamaBarang = ref.watch(filterNamaBarangProvider);
+      final filterNoPlat = ref.watch(filterNoPlatProvider);
 
       return rawState.whenData((list) {
         final now = DateTime.now();
 
-        // Filter Waktu
         var filteredList = list.where((item) {
-          if (filterWaktu == FilterWaktu.semua) return true;
+          // --- 1. FILTER WAKTU ---
           if (filterWaktu == FilterWaktu.hariIni) {
-            return item.tanggal.year == now.year &&
-                item.tanggal.month == now.month &&
-                item.tanggal.day == now.day;
-          }
-          if (filterWaktu == FilterWaktu.bulanIni) {
-            return item.tanggal.year == now.year &&
-                item.tanggal.month == now.month;
-          }
-          if (filterWaktu == FilterWaktu.mingguIni) {
-            // Logika sederhana minggu ini (selisih max 7 hari ke belakang)
+            if (item.tanggal.year != now.year ||
+                item.tanggal.month != now.month ||
+                item.tanggal.day != now.day)
+              return false;
+          } else if (filterWaktu == FilterWaktu.bulanIni) {
+            if (item.tanggal.year != now.year ||
+                item.tanggal.month != now.month)
+              return false;
+          } else if (filterWaktu == FilterWaktu.mingguIni) {
             final difference = now.difference(item.tanggal).inDays;
-            return difference >= 0 && difference <= 7;
+            if (difference < 0 || difference > 7) return false;
+          } else if (filterWaktu == FilterWaktu.pilihTanggal &&
+              customTanggal != null) {
+            if (item.tanggal.year != customTanggal.year ||
+                item.tanggal.month != customTanggal.month ||
+                item.tanggal.day != customTanggal.day)
+              return false;
           }
-          return true;
-        }).toList();
 
-        // Filter Pencarian (Cari berdasarkan Barang, Toko, Mobil, atau Petugas)
-        if (query.isNotEmpty) {
-          filteredList = filteredList.where((item) {
-            return item.namaBarang.toLowerCase().contains(query) ||
+          // --- 2. FILTER LANJUTAN (KOMBO) ---
+          if (filterKatBarang != null && item.kategoriBarang != filterKatBarang)
+            return false;
+          if (filterKatMobil != null && item.kategoriMobil != filterKatMobil)
+            return false;
+          if (filterPetugas != null && item.namaPetugas != filterPetugas)
+            return false;
+          if (filterNamaBarang != null && item.namaBarang != filterNamaBarang)
+            return false;
+          if (filterNoPlat != null && item.nopolMobil != filterNoPlat)
+            return false;
+
+          // --- 3. FILTER PENCARIAN TEKS BEBAS ---
+          if (query.isNotEmpty) {
+            final match =
+                item.namaBarang.toLowerCase().contains(query) ||
                 item.namaToko.toLowerCase().contains(query) ||
                 item.nopolMobil.toLowerCase().contains(query) ||
                 item.namaPetugas.toLowerCase().contains(query);
-          }).toList();
-        }
+            if (!match) return false;
+          }
+
+          return true;
+        }).toList();
 
         return filteredList;
       });

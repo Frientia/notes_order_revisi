@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../domain/providers/riwayat_provider_boss.dart';
-import '../../domain/providers/rekap_hutang_provider.dart'; // Untuk urlKwitansiProvider
+import '../../domain/providers/rekap_hutang_provider.dart';
 import '../../core/utils/formatters.dart';
 
 class RiwayatScreenBoss extends ConsumerStatefulWidget {
@@ -33,6 +33,16 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
   Widget build(BuildContext context) {
     final riwayatState = ref.watch(riwayatFilteredProvider);
     final filterWaktu = ref.watch(filterWaktuRiwayatProvider);
+    final customTanggal = ref.watch(filterTanggalCustomProvider);
+
+    // Menghitung jumlah filter lanjutan yang aktif
+    int activeAdvancedFilters = 0;
+    if (ref.watch(filterKategoriBarangProvider) != null)
+      activeAdvancedFilters++;
+    if (ref.watch(filterKategoriMobilProvider) != null) activeAdvancedFilters++;
+    if (ref.watch(filterPetugasProvider) != null) activeAdvancedFilters++;
+    if (ref.watch(filterNamaBarangProvider) != null) activeAdvancedFilters++;
+    if (ref.watch(filterNoPlatProvider) != null) activeAdvancedFilters++;
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -46,6 +56,41 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
               backgroundColor: Colors.blueGrey[900],
               foregroundColor: Colors.white,
               expandedHeight: 140,
+              title: const Text(
+                'Riwayat Transaksi',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              actions: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.tune),
+                      tooltip: 'Filter Lanjutan',
+                      onPressed: () => _showAdvancedFilter(context, ref),
+                    ),
+                    if (activeAdvancedFilters > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '$activeAdvancedFilters',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
               flexibleSpace: FlexibleSpaceBar(
                 background: Container(
                   padding: const EdgeInsets.only(top: 60, left: 16, right: 16),
@@ -55,7 +100,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                         ref.read(searchRiwayatProvider.notifier).state = val,
                     style: const TextStyle(color: Colors.black87),
                     decoration: InputDecoration(
-                      hintText: 'Cari barang, toko, nopol, atau petugas...',
+                      hintText: 'Cari barang, nopol, atau petugas...',
                       hintStyle: TextStyle(color: Colors.grey[500]),
                       filled: true,
                       fillColor: Colors.white,
@@ -69,13 +114,9 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                   ),
                 ),
               ),
-              title: const Text(
-                'Riwayat Transaksi',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
             ),
 
-            // --- FILTER WAKTU (QUICK FILTERS) ---
+            // --- FILTER WAKTU (QUICK FILTERS - DIURUTKAN ULANG) ---
             SliverToBoxAdapter(
               child: Container(
                 color: Colors.white,
@@ -85,14 +126,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
-                      _buildFilterChip(
-                        context,
-                        ref,
-                        'Bulan Ini',
-                        FilterWaktu.bulanIni,
-                        filterWaktu,
-                      ),
-                      const SizedBox(width: 8),
                       _buildFilterChip(
                         context,
                         ref,
@@ -108,6 +141,55 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                         FilterWaktu.mingguIni,
                         filterWaktu,
                       ),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        context,
+                        ref,
+                        'Bulan Ini',
+                        FilterWaktu.bulanIni,
+                        filterWaktu,
+                      ),
+                      const SizedBox(width: 8),
+
+                      // --- TOMBOL PILIH TANGGAL (KALENDER) ---
+                      ChoiceChip(
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.calendar_month, size: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                              customTanggal != null &&
+                                      filterWaktu == FilterWaktu.pilihTanggal
+                                  ? DateFormat(
+                                      'dd MMM yyyy',
+                                    ).format(customTanggal)
+                                  : 'Pilih Tanggal',
+                            ),
+                          ],
+                        ),
+                        selected: filterWaktu == FilterWaktu.pilihTanggal,
+                        selectedColor: Colors.indigo.shade100,
+                        onSelected: (_) async {
+                          final pickedDate = await showDatePicker(
+                            context: context,
+                            initialDate: customTanggal ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                          );
+                          if (pickedDate != null) {
+                            ref
+                                    .read(filterTanggalCustomProvider.notifier)
+                                    .state =
+                                pickedDate;
+                            ref
+                                    .read(filterWaktuRiwayatProvider.notifier)
+                                    .state =
+                                FilterWaktu.pilihTanggal;
+                          }
+                        },
+                      ),
+
                       const SizedBox(width: 8),
                       _buildFilterChip(
                         context,
@@ -262,12 +344,10 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Baris 1: ID, Tanggal, dan Status
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  // --- PERBAIKAN: Masukkan $tglFormat di sebelah ID Nota ---
                                   Text(
                                     'NOTA #${item.idNota} • $tglFormat',
                                     style: TextStyle(
@@ -276,7 +356,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                                       fontSize: 12,
                                     ),
                                   ),
-
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
@@ -302,8 +381,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                                 ],
                               ),
                               const SizedBox(height: 10),
-
-                              // Baris 2: Nama Barang Utama
                               Text(
                                 item.namaBarang,
                                 style: const TextStyle(
@@ -312,8 +389,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                                 ),
                               ),
                               const SizedBox(height: 10),
-
-                              // Baris 3: Rincian (Toko & Mobil)
                               Row(
                                 children: [
                                   _buildInfoChip(
@@ -330,8 +405,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                                 ],
                               ),
                               const Divider(height: 24),
-
-                              // Baris 4: Petugas & Harga
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -397,7 +470,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
     );
   }
 
-  // --- WIDGET BANTUAN ---
   Widget _buildFilterChip(
     BuildContext context,
     WidgetRef ref,
@@ -444,6 +516,370 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
     );
   }
 
+  // --- BOTTOM SHEET FILTER LANJUTAN (Kombinasi Dinamis & Hierarki) ---
+  void _showAdvancedFilter(BuildContext context, WidgetRef ref) {
+    final rawData = ref.read(riwayatDataProvider).value ?? [];
+
+    // Ekstraksi nilai Kategori & Petugas (selalu statis dari seluruh data)
+    final List<String> listKatBarang =
+        rawData.map((e) => e.kategoriBarang).toSet().toList()..sort();
+    final List<String> listKatMobil =
+        rawData.map((e) => e.kategoriMobil).toSet().toList()..sort();
+    final List<String> listPetugas =
+        rawData.map((e) => e.namaPetugas).toSet().toList()..sort();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Consumer(
+          builder: (context, ref, child) {
+            // Pantau State saat ini
+            final selKatBarang = ref.watch(filterKategoriBarangProvider);
+            final selKatMobil = ref.watch(filterKategoriMobilProvider);
+            final selNamaBarang = ref.watch(filterNamaBarangProvider);
+            final selNoPlat = ref.watch(filterNoPlatProvider);
+            final selPetugas = ref.watch(filterPetugasProvider);
+
+            // List Dinamis: Barang dan Plat akan tersaring otomatis mengikuti Kategori yang dipilih atasnya
+            final listNamaBarang =
+                rawData
+                    .where(
+                      (e) =>
+                          selKatBarang == null ||
+                          e.kategoriBarang == selKatBarang,
+                    )
+                    .map((e) => e.namaBarang)
+                    .toSet()
+                    .toList()
+                  ..sort();
+
+            final listNoPlat =
+                rawData
+                    .where(
+                      (e) =>
+                          selKatMobil == null || e.kategoriMobil == selKatMobil,
+                    )
+                    .map((e) => e.nopolMobil)
+                    .toSet()
+                    .toList()
+                  ..sort();
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 20,
+                right: 20,
+                top: 16,
+              ),
+              child: DraggableScrollableSheet(
+                initialChildSize: 0.85,
+                minChildSize: 0.5,
+                maxChildSize: 0.95,
+                expand: false,
+                builder: (_, scrollController) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Filter Lanjutan',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Divider(height: 16),
+
+                      Expanded(
+                        child: ListView(
+                          controller: scrollController,
+                          children: [
+                            // 1. Dropdown Kategori Barang
+                            const Text(
+                              'Kategori Barang',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String?>(
+                              value: selKatBarang,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('Semua Kategori Barang'),
+                                ),
+                                ...listKatBarang.map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                ref
+                                        .read(
+                                          filterKategoriBarangProvider.notifier,
+                                        )
+                                        .state =
+                                    val;
+                                ref
+                                        .read(filterNamaBarangProvider.notifier)
+                                        .state =
+                                    null; // Auto-reset barang jika kategori berubah
+                              },
+                            ),
+                            const SizedBox(height: 16),
+
+                            // 2. Dropdown Nama Barang (Dinamis bergantung Kategori Barang)
+                            const Text(
+                              'Nama Barang',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String?>(
+                              value: selNamaBarang,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                              ),
+                              items: [
+                                DropdownMenuItem(
+                                  value: null,
+                                  child: Text(
+                                    selKatBarang == null
+                                        ? 'Semua Barang'
+                                        : 'Semua Barang di Kategori Ini',
+                                  ),
+                                ),
+                                ...listNamaBarang.map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(
+                                      e,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) =>
+                                  ref
+                                          .read(
+                                            filterNamaBarangProvider.notifier,
+                                          )
+                                          .state =
+                                      val,
+                            ),
+                            const SizedBox(height: 24),
+                            const Divider(),
+                            const SizedBox(height: 12),
+
+                            // 3. Dropdown Kategori Mobil
+                            const Text(
+                              'Kategori Mobil',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String?>(
+                              value: selKatMobil,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('Semua Kategori Mobil'),
+                                ),
+                                ...listKatMobil.map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                ref
+                                        .read(
+                                          filterKategoriMobilProvider.notifier,
+                                        )
+                                        .state =
+                                    val;
+                                ref.read(filterNoPlatProvider.notifier).state =
+                                    null; // Auto-reset plat jika kategori berubah
+                              },
+                            ),
+                            const SizedBox(height: 16),
+
+                            // 4. Dropdown No Plat Mobil (Dinamis bergantung Kategori Mobil)
+                            const Text(
+                              'No Plat Mobil',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String?>(
+                              value: selNoPlat,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                              ),
+                              items: [
+                                DropdownMenuItem(
+                                  value: null,
+                                  child: Text(
+                                    selKatMobil == null
+                                        ? 'Semua Plat Mobil'
+                                        : 'Semua Plat di Kategori Ini',
+                                  ),
+                                ),
+                                ...listNoPlat.map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) =>
+                                  ref
+                                          .read(filterNoPlatProvider.notifier)
+                                          .state =
+                                      val,
+                            ),
+                            const SizedBox(height: 24),
+                            const Divider(),
+                            const SizedBox(height: 12),
+
+                            // 5. Dropdown Petugas
+                            const Text(
+                              'Nama Petugas',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String?>(
+                              value: selPetugas,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('Semua Petugas'),
+                                ),
+                                ...listPetugas.map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) =>
+                                  ref
+                                          .read(filterPetugasProvider.notifier)
+                                          .state =
+                                      val,
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
+
+                      // Tombol Reset
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                          ),
+                          onPressed: () {
+                            ref
+                                    .read(filterKategoriBarangProvider.notifier)
+                                    .state =
+                                null;
+                            ref.read(filterNamaBarangProvider.notifier).state =
+                                null;
+                            ref
+                                    .read(filterKategoriMobilProvider.notifier)
+                                    .state =
+                                null;
+                            ref.read(filterNoPlatProvider.notifier).state =
+                                null;
+                            ref.read(filterPetugasProvider.notifier).state =
+                                null;
+                            Navigator.pop(ctx);
+                          },
+                          child: const Text('Reset Filter'),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   // --- POP-UP DETAIL & KWITANSI ---
   void _showKwitansiDialog(
     BuildContext context,
@@ -475,7 +911,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                   ),
                   const Divider(height: 24),
 
-                  // Detail Text
                   _detailRow(
                     'ID Nota / Detail:',
                     '#${item.idNota} / #${item.idDetail}',
@@ -484,9 +919,16 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                     'Tanggal:',
                     DateFormat('dd MMM yyyy, HH:mm').format(item.tanggal),
                   ),
-                  _detailRow('Barang:', item.namaBarang, isBold: true),
+                  _detailRow(
+                    'Barang:',
+                    '${item.namaBarang} (${item.kategoriBarang})',
+                    isBold: true,
+                  ),
                   _detailRow('Toko:', item.namaToko),
-                  _detailRow('Mobil:', item.nopolMobil),
+                  _detailRow(
+                    'Mobil:',
+                    '${item.nopolMobil} (${item.kategoriMobil})',
+                  ),
                   _detailRow('Petugas:', item.namaPetugas),
                   _detailRow(
                     'Status:',
@@ -518,7 +960,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Memuat url gambar kwitansi (Menggunakan provider dari file rekap hutang)
                   const Text(
                     'Bukti Kwitansi:',
                     style: TextStyle(
@@ -572,7 +1013,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                               ),
                             );
                           }
-
                           return ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: Image.network(
