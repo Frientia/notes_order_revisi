@@ -75,7 +75,7 @@ class BossDashboard extends ConsumerWidget {
                     onTap: () {
                       Navigator.pop(context); // 1. Tutup drawer terlebih dahulu
                       context.push(
-                        '/riwayat',
+                        '/riwayat-boss',
                       ); // 2. Pindah ke rute halaman riwayat
                     },
                   ),
