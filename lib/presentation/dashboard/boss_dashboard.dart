@@ -5,8 +5,9 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/dashboard_boss_repository.dart';
 import '../../domain/providers/dashboard_boss_provider.dart';
+import '../../domain/providers/riwayat_provider_boss.dart'; // Import untuk recentTransaksiDashboardProvider
 import 'package:go_router/go_router.dart';
-import '../../core/utils/formatters.dart'; // Aktifkan formatter kembali
+import '../../core/utils/formatters.dart';
 
 class BossDashboard extends ConsumerWidget {
   const BossDashboard({super.key});
@@ -20,7 +21,7 @@ class BossDashboard extends ConsumerWidget {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text(
-          'Dashboard Eksekutif',
+          'Dashboard Executive',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.blueGrey[800],
@@ -75,23 +76,21 @@ class BossDashboard extends ConsumerWidget {
                     onTap: () {
                       Navigator.pop(context); // 1. Tutup drawer terlebih dahulu
                       context.push(
-                        '/riwayat',
+                        '/riwayat-boss',
                       ); // 2. Pindah ke rute halaman riwayat
                     },
                   ),
 
-                  // 2. MENU AKUNTABILITAS PETUGAS (Pengganti rekap kendaraan)
+                  // 2. MENU AKUNTABILITAS PETUGAS
                   ListTile(
                     leading: const Icon(
                       Icons.assignment_ind,
                       color: Colors.orange,
-                    ), // Ganti ikon agar sesuai petugas
+                    ),
                     title: const Text('Akuntabilitas Petugas'),
                     onTap: () {
                       Navigator.pop(context);
-                      context.push(
-                        '/log-petugas',
-                      ); // Pindah ke rute halaman log petugas
+                      context.push('/log-petugas');
                     },
                   ),
 
@@ -100,8 +99,8 @@ class BossDashboard extends ConsumerWidget {
                     leading: const Icon(Icons.store, color: Colors.teal),
                     title: const Text('Rekap Hutang Toko'),
                     onTap: () {
-                      Navigator.pop(context); // Menutup sidebar
-                      context.push('/rekap-hutang'); // Mengarah ke rute hutang
+                      Navigator.pop(context);
+                      context.push('/rekap-hutang');
                     },
                   ),
 
@@ -132,10 +131,16 @@ class BossDashboard extends ConsumerWidget {
         error: (err, stack) => Center(
           child: Text('Terjadi Kesalahan:\n$err', textAlign: TextAlign.center),
         ),
+
         data: (data) {
           return RefreshIndicator(
-            // Fitur tarik ke bawah untuk me-refresh data
-            onRefresh: () async => ref.refresh(dashboardDataProvider),
+            onRefresh: () async {
+              ref.invalidate(dashboardDataProvider);
+              ref.invalidate(recentTransaksiDashboardProvider);
+              try {
+                await ref.read(dashboardDataProvider.future);
+              } catch (_) {}
+            },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16.0),
@@ -148,7 +153,7 @@ class BossDashboard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // SECTION: KPI CARDS MEMAKAI DATA ASLI
+                  // SECTION: KPI CARDS
                   Row(
                     children: [
                       Expanded(
@@ -180,9 +185,15 @@ class BossDashboard extends ConsumerWidget {
                     color: Colors.green,
                     isFullWidth: true,
                   ),
-                  const SizedBox(height: 32),
 
-                  // SECTION: GRAFIK MEMAKAI DATA ASLI
+                  const SizedBox(height: 24),
+
+                  // --- WIDGET TABEL 5 TRANSAKSI TERBARU HARI INI ---
+                  _buildRecentTransactionsTable(context, ref),
+
+                  const SizedBox(height: 24),
+
+                  // SECTION: GRAFIK
                   const Text(
                     'Grafik Pengadaan Sparepart (6 Bulan)',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -236,7 +247,8 @@ class BossDashboard extends ConsumerWidget {
     bool isFullWidth = false,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      // Padding dikurangi sedikit agar ruang untuk teks lebih luas di layar kecil
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -251,14 +263,18 @@ class BossDashboard extends ConsumerWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10), // Padding icon disesuaikan
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 28),
+            child: Icon(
+              icon,
+              color: color,
+              size: 24,
+            ), // Ukuran icon disesuaikan
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,20 +282,27 @@ class BossDashboard extends ConsumerWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11, // Ukuran judul sedikit dirapikan
                     color: Colors.grey[600],
                     fontWeight: FontWeight.w600,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: isFullWidth ? 22 : 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                // --- PERBAIKAN: Menggunakan FittedBox ---
+                // Teks akan otomatis mengecil jika layarnya sempit, tidak akan terpotong!
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: isFullWidth ? 22 : 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -306,14 +329,215 @@ class BossDashboard extends ConsumerWidget {
     );
   }
 
+  // --- HELPER METHOD: TABEL INTERAKTIF PENCATATAN TERBARU ---
+  Widget _buildRecentTransactionsTable(BuildContext context, WidgetRef ref) {
+    final recentData = ref.watch(recentTransaksiDashboardProvider);
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.flash_on,
+                    color: Colors.orange,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  '5 Pencatatan Terbaru Hari Ini',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            recentData.when(
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (err, _) => Center(
+                child: Text(
+                  'Gagal memuat data tabel: $err',
+                  style: const TextStyle(color: Colors.red, fontSize: 13),
+                ),
+              ),
+              data: (listData) {
+                if (listData.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: Text(
+                        'Belum ada transaksi masuk hari ini.',
+                        style: TextStyle(color: Colors.grey, fontSize: 13),
+                      ),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: [
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        headingRowColor: WidgetStateProperty.resolveWith(
+                          (states) => Colors.grey[50],
+                        ),
+                        dataRowMinHeight: 40,
+                        dataRowMaxHeight: 50,
+                        columnSpacing: 20,
+                        columns: const [
+                          DataColumn(
+                            label: Text(
+                              'No',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Petugas',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Kategori',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Nama Barang',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'No Plat',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Qty',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Harga Satuan',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                        rows: List.generate(listData.length, (index) {
+                          final item = listData[index];
+                          return DataRow(
+                            cells: [
+                              DataCell(Text('${index + 1}')),
+                              DataCell(
+                                Text(
+                                  item.namaPetugas,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blueGrey.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    item.kategoriBarang,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.blueGrey,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              DataCell(Text(item.namaBarang)),
+                              DataCell(
+                                Text(
+                                  item.nopolMobil,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.teal,
+                                  ),
+                                ),
+                              ),
+                              DataCell(Text('${item.qty}')),
+                              DataCell(Text(AppFormatters.rupiah(item.harga))),
+                            ],
+                          );
+                        }),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.indigo,
+                          side: const BorderSide(color: Colors.indigo),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () {
+                          // Navigasi GoRouter yang serasi dengan isi Drawer Anda
+                          context.push('/riwayat-boss');
+                        },
+                        child: const Text(
+                          'Lihat pencatatan selanjutnya ->',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // --- KONFIGURASI GRAFIK DINAMIS ---
   LineChartData _buildCombinedChartData(DashboardData data) {
-    // Mengubah Rupiah menjadi satuan "Juta" agar muat di sumbu Y grafik
     List<double> belanjaJutaan = data.belanja6Bulan
         .map((e) => e / 1000000)
         .toList();
 
-    // Mencari batas atas grafik (Max Y) secara dinamis agar grafik tidak terpotong
     double maxBelanja = belanjaJutaan.isNotEmpty
         ? belanjaJutaan.reduce(max)
         : 0;
@@ -321,9 +545,7 @@ class BossDashboard extends ConsumerWidget {
         ? data.transaksi6Bulan.reduce(max).toDouble()
         : 0;
     double highestY = max(maxBelanja, maxTransaksi);
-    double maxYLimit = highestY > 0
-        ? highestY + (highestY * 0.2)
-        : 10; // Tambah 20% ruang kosong di atas
+    double maxYLimit = highestY > 0 ? highestY + (highestY * 0.2) : 10;
 
     return LineChartData(
       gridData: const FlGridData(show: true, drawVerticalLine: false),
@@ -363,10 +585,9 @@ class BossDashboard extends ConsumerWidget {
       minX: 0,
       maxX: 5,
       minY: 0,
-      maxY: maxYLimit, // Skala Y Dinamis
+      maxY: maxYLimit,
 
       lineBarsData: [
-        // 1. Garis Belanja (Satuan Juta)
         LineChartBarData(
           spots: List.generate(
             6,
@@ -382,7 +603,6 @@ class BossDashboard extends ConsumerWidget {
             color: Colors.blue.withOpacity(0.1),
           ),
         ),
-        // 2. Garis Transaksi
         LineChartBarData(
           spots: List.generate(
             6,
