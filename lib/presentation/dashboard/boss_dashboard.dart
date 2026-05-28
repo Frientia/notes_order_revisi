@@ -115,7 +115,7 @@ class BossDashboard extends ConsumerWidget {
                     title: const Text('Cetak Laporan PDF'),
                     onTap: () {
                       Navigator.pop(context);
-                      context.push('/cetak-pdf');
+                      context.push('/cetak-laporan');
                     },
                   ),
                 ],
