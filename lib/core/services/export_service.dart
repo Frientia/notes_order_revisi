@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:excel/excel.dart' as ex;
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -9,9 +10,6 @@ import 'package:notes_order/domain/providers/riwayat_provider_boss.dart';
 import 'package:notes_order/core/utils/formatters.dart';
 
 class ExportService {
-  // =========================================================================
-  // FUNGSI BANTUAN: MENGELOMPOKKAN DATA BERDASARKAN ID NOTA TRANSAKSI
-  // =========================================================================
   static List<List<RiwayatTransaksi>> _groupDataByNota(
     List<RiwayatTransaksi> data,
   ) {
@@ -32,27 +30,28 @@ class ExportService {
   }) async {
     final pdf = pw.Document();
     final formatTanggal = DateFormat('dd/MM/yyyy HH:mm');
+    final ByteData logoBytes = await rootBundle.load(
+      'assets/logo/logolahirbaru.png',
+    );
+    final Uint8List logoUint8List = logoBytes.buffer.asUint8List();
+    final logoImage = pw.MemoryImage(logoUint8List);
 
     final double totalPengeluaran = data.fold(
       0,
       (sum, item) => sum + item.subtotal,
     );
 
-    // Untuk menghitung nota lunas/hutang, kita hitung per Transaksi (Nota), bukan per item
     final groupedTransactions = _groupDataByNota(data);
     int totalLunas = 0;
     int totalHutang = 0;
 
     for (var group in groupedTransactions) {
-      // Kita asumsikan status 1 nota sama untuk semua item di dalamnya
       if (group.first.status == 'SELESAI' || group.first.status == 'LUNAS') {
         totalLunas++;
       } else {
         totalHutang++;
       }
     }
-
-    // --- MENYUSUN BARIS TABEL (MENGKOSONGKAN KOLOM JIKA NOTA SAMA) ---
     List<List<String>> tableData = [];
     int nomorUrut = 1;
 
@@ -60,24 +59,22 @@ class ExportService {
       for (int i = 0; i < group.length; i++) {
         final item = group[i];
         if (i == 0) {
-          // Baris PERTAMA dari sebuah nota (Tampilkan No, Tanggal, ID Nota)
           tableData.add([
             '$nomorUrut',
             formatTanggal.format(item.tanggal),
             '#${item.idNota}',
             item.namaBarang,
             item.nopolMobil,
-            item.namaToko, // Menambahkan toko sesuai gambar
+            item.namaToko,
             '${item.qty}',
             AppFormatters.rupiah(item.harga),
             AppFormatters.rupiah(item.subtotal),
           ]);
         } else {
-          // Baris KEDUA dan seterusnya dari nota yang sama (Kosongkan No, Tanggal, ID)
           tableData.add([
-            '', // No kosong
-            '', // Tanggal kosong
-            '', // ID Nota kosong
+            '',
+            '',
+            '',
             item.namaBarang,
             item.nopolMobil,
             item.namaToko,
@@ -103,23 +100,34 @@ class ExportService {
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                // --- 2. MASUKKAN LOGO DI SEBELAH NAMA PERUSAHAAN ---
+                pw.Row(
                   children: [
-                    pw.Text(
-                      'PT LAHIR BARUTAMA',
-                      style: pw.TextStyle(
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blueGrey900,
-                      ),
-                    ),
-                    pw.Text(
-                      'Laporan Logistik & Pengadaan Sparepart Armada',
-                      style: pw.TextStyle(
-                        fontSize: 10,
-                        color: PdfColors.grey600,
-                      ),
+                    pw.Image(
+                      logoImage,
+                      width: 45,
+                      height: 45,
+                    ), // Atur ukuran logo di sini
+                    pw.SizedBox(width: 12), // Jarak antara logo dan teks
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'PT LAHIR BARUTAMA',
+                          style: pw.TextStyle(
+                            fontSize: 16,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.blueGrey900,
+                          ),
+                        ),
+                        pw.Text(
+                          'Laporan Logistik & Pengadaan Sparepart Armada',
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            color: PdfColors.grey600,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -142,6 +150,7 @@ class ExportService {
                 ),
               ],
             ),
+            pw.SizedBox(height: 8),
             pw.Divider(thickness: 2, color: PdfColors.blueGrey900),
             pw.SizedBox(height: 10),
           ],
