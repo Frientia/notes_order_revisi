@@ -1,45 +1,45 @@
 class TokoModel {
   final String? idToko;
   final String namaToko;
-  final String? alamat;
-  final String? noTelpon;
+  final String noTelp;
+  final String alamat;
 
   TokoModel({
     this.idToko,
     required this.namaToko,
-    this.alamat,
-    this.noTelpon,
+    required this.noTelp,
+    required this.alamat,
   });
 
   factory TokoModel.fromJson(Map<String, dynamic> json) {
     return TokoModel(
       idToko: json['id_toko']?.toString(),
       namaToko: json['nama_toko']?.toString() ?? '',
-      alamat: json['alamat']?.toString(),
-      noTelpon: json['no_telpon']?.toString(),
+      noTelp: json['no_telpon']?.toString() ?? '-',
+      alamat: json['alamat']?.toString() ?? '-',
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      if (idToko != null) 'id_toko': int.tryParse(idToko!), 
+      if (idToko != null && idToko!.isNotEmpty) 'id_toko': int.tryParse(idToko!),
       'nama_toko': namaToko,
+      'no_telpon': noTelp,
       'alamat': alamat,
-      'no_telpon': noTelpon,
     };
   }
 
   TokoModel copyWith({
     String? idToko,
     String? namaToko,
+    String? noTelp,
     String? alamat,
-    String? noTelpon,
   }) {
     return TokoModel(
       idToko: idToko ?? this.idToko,
       namaToko: namaToko ?? this.namaToko,
+      noTelp: noTelp ?? this.noTelp,
       alamat: alamat ?? this.alamat,
-      noTelpon: noTelpon ?? this.noTelpon,
     );
   }
 }

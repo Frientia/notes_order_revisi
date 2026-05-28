@@ -36,7 +36,7 @@ class TokoScreen extends ConsumerWidget {
                     ),
                   ),
                   subtitle: Text(
-                    '${toko.noTelpon}\n${toko.alamat}',
+                    '${toko.noTelp}\n${toko.alamat}',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -103,7 +103,7 @@ class TokoScreen extends ConsumerWidget {
   }) {
     final isEdit = toko != null;
     final namaTokoCtrl = TextEditingController(text: toko?.namaToko);
-    final telponCtrl = TextEditingController(text: toko?.noTelpon);
+    final telponCtrl = TextEditingController(text: toko?.noTelp);
     final alamatCtrl = TextEditingController(text: toko?.alamat);
     final formKey = GlobalKey<FormState>();
 
@@ -182,9 +182,8 @@ class TokoScreen extends ConsumerWidget {
                     final newToko = TokoModel(
                       idToko: toko!.idToko,
                       namaToko: namaTokoCtrl.text.trim(),
-                      noTelpon: telponCtrl.text.trim(),
-                      alamat: alamatCtrl.text.trim(),
-                    );
+                      noTelp: telponCtrl.text.trim(),
+                      alamat: alamatCtrl.text.trim(),                    );
 
                     try {
                       if (isEdit) {

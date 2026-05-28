@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 
 import '../../data/models/barang_model.dart';
 import '../../data/models/mobil_model.dart';
@@ -24,14 +25,15 @@ class FormPencatatanScreen extends ConsumerStatefulWidget {
 class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   final _formItemKey = GlobalKey<FormState>();
 
-  // State Filter Kategori
+  // State Filter Kategori (Tetap pakai bawaan karena isinya sedikit)
   BarangKategori? _selectedKategoriBarang;
   MobilKategori? _selectedKategoriMobil;
 
-  // State Input Rencana
-  String? _selectedIdBarang;
-  String? _selectedIdMobil;
-  String? _selectedIdToko;
+  // UBAH: State Input Rencana kini menggunakan Objek utuh agar lebih aman
+  BarangModel? _selectedBarang;
+  MobilModel? _selectedMobil;
+  TokoModel? _selectedToko;
+  
   final _qtyCtrl = TextEditingController();
   final _hargaEstimasiCtrl = TextEditingController();
 
@@ -65,7 +67,6 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     }
   }
 
-  // Kalkulasi Realtime yang lebih aman
   double _hitungGrandTotal(List<Map<String, dynamic>> items) {
     double total = 0;
     for (var item in items) {
@@ -81,14 +82,13 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   }
 
   Future<void> _eksekusiSelesai(int idDraft, List<Map<String, dynamic>> items) async {
-    // 1. VALIDASI KETAT SEBELUM FINALISASI
     for (var item in items) {
       final idDetail = item['id_detail_pencatatan'] as int;
       final hargaInput = double.tryParse(_hargaRiilControllers[idDetail]?.text ?? '0') ?? 0;
       
       if (hargaInput <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal! Harga riil pada item "${item['barang']['nama_barang']}" tidak boleh 0 atau kosong.'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Gagal! Harga riil item "${item['barang']['nama_barang']}" tidak boleh 0.'), backgroundColor: Colors.red),
         );
         return; 
       }
@@ -101,7 +101,6 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
       }
     }
 
-    // 2. EKSEKUSI JIKA SEMUA VALID
     setState(() => _isSubmitting = true);
     try {
       final List<Map<String, dynamic>> finalDataPayload = [];
@@ -141,12 +140,13 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     }
   }
 
-  // --- WIDGET HELPER UNTUK DROPDOWN + SHORTCUT ---
-  Widget _buildDropdownWithShortcut<T>({
+ // --- WIDGET HELPER: DROPDOWN SEARCH CERDAS (VERSI 7.0.0 FINAL) ---
+  Widget _buildSearchableDropdownWithShortcut<T>({
     required String label,
-    required T? value,
-    required IconData icon,
-    required List<DropdownMenuItem<T>> items,
+    required T? selectedItem,
+    required List<T> items,
+    required String Function(T) itemAsString,
+    required bool Function(T, T) compareFn,
     required Function(T?) onChanged,
     required VoidCallback onAddPressed,
   }) {
@@ -154,17 +154,48 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: DropdownButtonFormField<T>(
-            value: value,
-            decoration: InputDecoration(
-              labelText: label,
-              border: const OutlineInputBorder(),
-              prefixIcon: Icon(icon, size: 20),
-              isDense: true,
+          child: DropdownSearch<T>(
+            selectedItem: selectedItem,
+            
+            // [PERBAIKAN UTAMA]: items sekarang menggunakan fungsi callback
+            items: (String filter, LoadProps? loadProps) {
+              // Jika kotak pencarian kosong, tampilkan semua data
+              if (filter.isEmpty) return items;
+              
+              // Jika ada teks yang diketik, saring daftar secara real-time
+              return items.where((element) {
+                return itemAsString(element)
+                    .toLowerCase()
+                    .contains(filter.toLowerCase());
+              }).toList();
+            },
+            
+            itemAsString: itemAsString,
+            compareFn: compareFn,
+            
+            popupProps: PopupProps.menu(
+              showSearchBox: true,
+              searchFieldProps: TextFieldProps(
+                decoration: InputDecoration(
+                  hintText: 'Ketik untuk mencari...',
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  prefixIcon: const Icon(Icons.search),
+                ),
+              ),
             ),
-            items: items,
-            onChanged: onChanged,
-            validator: (val) => val == null ? 'Wajib' : null,
+            
+            decoratorProps: DropDownDecoratorProps(
+              decoration: InputDecoration(
+                labelText: label,
+                border: const OutlineInputBorder(),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+            ),
+            
+            onSaved: onChanged,
+            validator: (val) => val == null ? 'Wajib dipilih' : null,
           ),
         ),
         const SizedBox(width: 8),
@@ -225,7 +256,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                     const Divider(),
                     
                     DropdownButtonFormField<BarangKategori>(
-                      value: _selectedKategoriBarang,
+                      initialValue: _selectedKategoriBarang,
                       decoration: const InputDecoration(labelText: 'Filter Kategori Barang', isDense: true, border: OutlineInputBorder()),
                       items: [
                         const DropdownMenuItem<BarangKategori>(value: null, child: Text('Semua Kategori')),
@@ -233,27 +264,25 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                       ],
                       onChanged: (v) => setState(() {
                         _selectedKategoriBarang = v;
-                        _selectedIdBarang = null; 
+                        _selectedBarang = null; // Reset saat kategori diubah
                       }),
                     ),
                     const SizedBox(height: 16),
 
-                    // FIX 1: Tambahkan tanda seru (!) di b.idBarang!
-                    _buildDropdownWithShortcut<String>(
-                      label: 'Pilih Barang',
-                      icon: Icons.inventory_2,
-                      value: _selectedIdBarang,
-                      items: filteredBarang.map((b) => DropdownMenuItem(
-                        value: b.idBarang!, // <--- Tanda seru pengaman
-                        child: Text('${b.namaBarang} (${b.kategori?.label ?? "Umum"})') // Teks Enum Cantik
-                      )).toList(),
-                      onChanged: (v) => setState(() => _selectedIdBarang = v),
+                    // IMPLEMENTASI DROPDOWN SEARCH BARANG
+                    _buildSearchableDropdownWithShortcut<BarangModel>(
+                      label: 'Cari / Pilih Barang',
+                      selectedItem: _selectedBarang,
+                      items: filteredBarang,
+                      itemAsString: (b) => '${b.namaBarang} (${b.kategori?.label ?? "Umum"})',
+                      compareFn: (a, b) => a.idBarang == b.idBarang,
+                      onChanged: (v) => setState(() => _selectedBarang = v),
                       onAddPressed: () => _showAddBarangShortcut(context),
                     ),
                     const SizedBox(height: 16),
 
                     DropdownButtonFormField<MobilKategori>(
-                      value: _selectedKategoriMobil,
+                      initialValue: _selectedKategoriMobil,
                       decoration: const InputDecoration(labelText: 'Filter Kategori Mobil', isDense: true, border: OutlineInputBorder()),
                       items: [
                         const DropdownMenuItem<MobilKategori>(value: null, child: Text('Semua Kategori')),
@@ -261,35 +290,31 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                       ],
                       onChanged: (v) => setState(() {
                         _selectedKategoriMobil = v;
-                        _selectedIdMobil = null; 
+                        _selectedMobil = null; 
                       }),
                     ),
                     const SizedBox(height: 12),
 
-                    // FIX 2: Tambahkan tanda seru (!) di m.idMobil!
-                    _buildDropdownWithShortcut<String>(
-                      label: 'Pilih Alokasi Mobil',
-                      icon: Icons.directions_car,
-                      value: _selectedIdMobil,
-                      items: filteredMobil.map((m) => DropdownMenuItem(
-                        value: m.idMobil!, // <--- Tanda seru pengaman
-                        child: Text('${m.noPlat} (${m.kategori?.label ?? "-"})')
-                      )).toList(),
-                      onChanged: (v) => setState(() => _selectedIdMobil = v),
+                    // IMPLEMENTASI DROPDOWN SEARCH MOBIL
+                    _buildSearchableDropdownWithShortcut<MobilModel>(
+                      label: 'Cari / Pilih Alokasi Mobil',
+                      selectedItem: _selectedMobil,
+                      items: filteredMobil,
+                      itemAsString: (m) => '${m.noPlat} (${m.kategori?.label ?? "-"})',
+                      compareFn: (a, b) => a.idMobil == b.idMobil,
+                      onChanged: (v) => setState(() => _selectedMobil = v),
                       onAddPressed: () => _showAddMobilShortcut(context),
                     ),
                     const SizedBox(height: 16),
 
-                    // FIX 3: Tambahkan tanda seru (!) di t.idToko!
-                    _buildDropdownWithShortcut<String>(
-                      label: 'Pilih Toko Tujuan',
-                      icon: Icons.store,
-                      value: _selectedIdToko,
-                      items: tokoList.map((t) => DropdownMenuItem(
-                        value: t.idToko!, // <--- Tanda seru pengaman
-                        child: Text(t.namaToko)
-                      )).toList(),
-                      onChanged: (v) => setState(() => _selectedIdToko = v),
+                    // IMPLEMENTASI DROPDOWN SEARCH TOKO
+                    _buildSearchableDropdownWithShortcut<TokoModel>(
+                      label: 'Cari / Pilih Toko Tujuan',
+                      selectedItem: _selectedToko,
+                      items: tokoList,
+                      itemAsString: (t) => t.namaToko,
+                      compareFn: (a, b) => a.idToko == b.idToko,
+                      onChanged: (v) => setState(() => _selectedToko = v),
                       onAddPressed: () => _showAddTokoShortcut(context),
                     ),
                     const SizedBox(height: 16),
@@ -318,21 +343,24 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       onPressed: () {
-                        if (_formItemKey.currentState!.validate()) {
+                        // Validasi null checks langsung menggunakan Object
+                        if (_formItemKey.currentState!.validate() && _selectedBarang != null && _selectedMobil != null && _selectedToko != null) {
                           ref.read(transaksiDraftProvider.notifier).tambahItemKeDraft(
-                                idBarang: int.parse(_selectedIdBarang!),
-                                idMobil: int.parse(_selectedIdMobil!),
-                                idToko: int.parse(_selectedIdToko!),
+                                idBarang: int.parse(_selectedBarang!.idBarang!),
+                                idMobil: int.parse(_selectedMobil!.idMobil!),
+                                idToko: int.parse(_selectedToko!.idToko!),
                                 qty: int.parse(_qtyCtrl.text),
                                 hargaEstimasi: double.tryParse(_hargaEstimasiCtrl.text) ?? 0,
                               );
                           _qtyCtrl.clear();
                           _hargaEstimasiCtrl.clear();
                           setState(() {
-                            _selectedIdBarang = null;
-                            _selectedIdMobil = null;
-                            _selectedIdToko = null;
+                            _selectedBarang = null;
+                            _selectedMobil = null;
+                            _selectedToko = null;
                           });
+                        } else if (_selectedBarang == null || _selectedMobil == null || _selectedToko == null) {
+                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih Barang, Mobil, dan Toko!'), backgroundColor: Colors.orange));
                         }
                       },
                       icon: const Icon(Icons.playlist_add),
@@ -377,7 +405,6 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              // Memunculkan nama barang beserta kategorinya di daftar belanja
                               '${item['barang']?['nama_barang']} (${item['barang']?['kategori'] ?? "-"})',
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                             ),
@@ -407,7 +434,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                           Expanded(
                             flex: 2,
                             child: DropdownButtonFormField<String>(
-                              value: _statusPembayaranMap[idDetail],
+                              initialValue: _statusPembayaranMap[idDetail],
                               decoration: const InputDecoration(labelText: 'Metode', isDense: true, filled: true, fillColor: Colors.white),
                               items: const [
                                 DropdownMenuItem(value: 'SELESAI', child: Text('CASH')),
@@ -475,7 +502,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     );
   }
 
-  // ================= MODAL SHORTCUTS ================= //
+  // ================= MODAL SHORTCUTS TETAP SAMA ================= //
 
   void _showAddBarangShortcut(BuildContext context) {
     final namaCtrl = TextEditingController();
@@ -492,7 +519,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
               TextFormField(controller: namaCtrl, decoration: const InputDecoration(labelText: 'Nama Barang', border: OutlineInputBorder()), autofocus: true),
               const SizedBox(height: 12),
               DropdownButtonFormField<BarangKategori>(
-                value: shortcutSelectedKategori,
+                initialValue: shortcutSelectedKategori,
                 decoration: const InputDecoration(labelText: 'Kategori Barang', border: OutlineInputBorder()),
                 items: BarangKategori.values.map((k) => DropdownMenuItem(value: k, child: Text(k.label))).toList(),
                 onChanged: (v) => setStateModal(() => shortcutSelectedKategori = v),
@@ -522,6 +549,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
 
   void _showAddMobilShortcut(BuildContext context) {
     final platCtrl = TextEditingController();
+    final tahunCtrl = TextEditingController();
     MobilKategori? selectedCat;
     showDialog(
       context: context,
@@ -534,19 +562,21 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
               TextFormField(controller: platCtrl, textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(labelText: 'No Plat', border: OutlineInputBorder()), autofocus: true),
               const SizedBox(height: 12),
               DropdownButtonFormField<MobilKategori>(
-                value: selectedCat,
+                initialValue: selectedCat,
                 decoration: const InputDecoration(labelText: 'Kategori', border: OutlineInputBorder()),
                 items: MobilKategori.values.map((k) => DropdownMenuItem(value: k, child: Text(k.label))).toList(),
                 onChanged: (v) => setStateModal(() => selectedCat = v),
               ),
+              const SizedBox(height: 12),
+              TextFormField(controller: tahunCtrl, decoration: const InputDecoration(labelText: 'Tahun', border: OutlineInputBorder()), autofocus: true),
             ],
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
             ElevatedButton(
               onPressed: () async {
-                if (platCtrl.text.isNotEmpty && selectedCat != null) {
-                  final newMobil = MobilModel(noPlat: platCtrl.text.trim().toUpperCase(), kategori: selectedCat);
+                if (platCtrl.text.isNotEmpty && selectedCat != null && tahunCtrl.text.isNotEmpty) {
+                  final newMobil = MobilModel(noPlat: platCtrl.text.trim().toUpperCase(), kategori: selectedCat, tahun: int.parse(tahunCtrl.text));
                   await ref.read(mobilControllerProvider.notifier).addMobil(newMobil);
                   if (ctx.mounted) Navigator.pop(ctx);
                 }
@@ -561,17 +591,33 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
 
   void _showAddTokoShortcut(BuildContext context) {
     final namaCtrl = TextEditingController();
+    final telponCtrl = TextEditingController();
+    final alamatCtrl = TextEditingController();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Tambah Toko Baru'),
-        content: TextFormField(controller: namaCtrl, decoration: const InputDecoration(labelText: 'Nama Toko', border: OutlineInputBorder()), autofocus: true),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(controller: namaCtrl, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Nama Toko', border: OutlineInputBorder()), autofocus: true),
+            const SizedBox(height: 12),
+            TextFormField(controller: telponCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'No Telp', border: OutlineInputBorder())),
+            const SizedBox(height: 12),
+            TextFormField(controller: alamatCtrl, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Alamat', border: OutlineInputBorder())),
+          ],
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
           ElevatedButton(
             onPressed: () async {
-              if (namaCtrl.text.isNotEmpty) {
-                final newToko = TokoModel(namaToko: namaCtrl.text.trim());
+              if (namaCtrl.text.isNotEmpty && telponCtrl.text.isNotEmpty && alamatCtrl.text.isNotEmpty) {
+                final newToko = TokoModel(
+                  namaToko: namaCtrl.text.trim(),
+                  noTelp: telponCtrl.text.trim(),
+                  alamat: alamatCtrl.text.trim(),
+                );
                 await ref.read(tokoControllerProvider.notifier).addToko(newToko);
                 if (ctx.mounted) Navigator.pop(ctx);
               }
