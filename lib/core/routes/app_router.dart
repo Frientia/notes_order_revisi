@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:notes_order/presentation/auth/register_screen.dart';
-import 'package:notes_order/presentation/auth/waiting_verification_screen.dart';
+import 'package:notes_order/domain/providers/auth_provider.dart';
+import 'package:notes_order/domain/providers/user_role_provider.dart';
+import 'package:notes_order/presentation/auth/login_screen.dart';
 import 'package:notes_order/presentation/master_data/barang_screen.dart';
 import 'package:notes_order/presentation/master_data/mobil_screen.dart';
 import 'package:notes_order/presentation/master_data/toko_screen.dart';
 import 'package:notes_order/presentation/report/cetak_laporan_screen.dart';
+import 'package:notes_order/presentation/report/log_petugas_screen.dart';
 import 'package:notes_order/presentation/report/rekap_hutang_screen.dart';
-import 'package:notes_order/presentation/transaksi/riwayat_screen_boss.dart';
+import 'package:notes_order/presentation/splash/splash_screen.dart';
 import 'package:notes_order/presentation/transaksi/detail_riwayat_screen.dart';
 import 'package:notes_order/presentation/transaksi/form_pencatatan_screen.dart';
 import 'package:notes_order/presentation/transaksi/riwayat_screen.dart';
-import 'package:notes_order/presentation/report/log_petugas_screen.dart';
+import 'package:notes_order/presentation/dashboard/boss_dashboard.dart';
+import 'package:notes_order/presentation/dashboard/petugas_dashboard.dart';
+import 'package:notes_order/presentation/auth/register_screen.dart';
+import 'package:notes_order/presentation/auth/waiting_verification_screen.dart';
+import 'package:notes_order/presentation/transaksi/riwayat_screen_boss.dart';
 
-import '../../domain/providers/auth_provider.dart';
-import '../../domain/providers/user_role_provider.dart';
-
-import '../../presentation/auth/login_screen.dart';
-import '../../presentation/dashboard/petugas_dashboard.dart';
-import '../../presentation/dashboard/boss_dashboard.dart';
 
 class RouterNotifier extends ChangeNotifier {
   final Ref _ref;
@@ -27,6 +27,7 @@ class RouterNotifier extends ChangeNotifier {
   RouterNotifier(this._ref) {
     _ref.listen(authStateProvider, (_, __) => notifyListeners());
     _ref.listen(userRoleProvider, (_, __) => notifyListeners());
+    _ref.listen(splashReadyProvider, (_, __) => notifyListeners()); 
   }
 }
 
@@ -38,9 +39,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final routerNotifier = ref.read(routerNotifierProvider);
 
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/splash',
     refreshListenable: routerNotifier,
     redirect: (context, state) {
+      final isSplashReady = ref.read(splashReadyProvider);
       final authState = ref.read(authStateProvider);
       final roleAsyncValue = ref.read(userRoleProvider);
 
@@ -51,6 +53,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isGoingToLogin = currentLoc == '/login';
       final isGoingToRegister = currentLoc == '/register';
       final isGoingToWaiting = currentLoc == '/waiting-verification';
+      final isGoingToSplash = currentLoc == '/splash';
+
+      if (!isSplashReady) {
+        return isGoingToSplash ? null : '/splash';
+      }
 
       if (!isLoggedIn) {
         if (isGoingToLogin || isGoingToRegister) return null;
@@ -69,6 +76,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (isGoingToLogin ||
           isGoingToRegister ||
           isGoingToWaiting ||
+          isGoingToSplash ||
           currentLoc == '/') {
         if (role == 'petugas') return '/petugas-dashboard';
         if (role == 'boss') return '/boss-dashboard';
@@ -136,6 +144,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/detail-riwayat',
         builder: (context, state) =>
             DetailRiwayatScreen(idPencatatan: state.extra as int),
+      ),
+      GoRoute(
+        path: '/splash', 
+        builder: (context, state) => const SplashScreen()
       ),
     ],
   );

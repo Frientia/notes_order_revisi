@@ -94,7 +94,6 @@ class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationS
   Widget build(BuildContext context) {
     final minutes = (_secondsLeft / 60).floor().toString().padLeft(2, '0');
     final seconds = (_secondsLeft % 60).toString().padLeft(2, '0');
-    // Menghitung progress persentase untuk indikator lingkaran
     final double progress = _secondsLeft / 180; 
 
     return Scaffold(
@@ -137,7 +136,6 @@ class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationS
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Animasi Stacked Icon (Loading Melingkari Ikon Email)
                           SizedBox(
                             height: 120,
                             child: Stack(

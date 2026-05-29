@@ -48,7 +48,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isLoading = authState.isLoading;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5), // Latar belakang abu-abu terang modern
+      backgroundColor: const Color(0xFFF0F2F5),
       body: Stack(
         children: [
           // --- HEADER BACKGROUND DENGAN GRADASI ---
@@ -182,7 +182,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ElevatedButton(
                               onPressed: isLoading ? null : _submitLogin,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF3B56B9), // Warna biru utama
+                                backgroundColor: const Color(0xFF3B56B9), 
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(
