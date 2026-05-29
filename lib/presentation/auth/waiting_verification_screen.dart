@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:notes_order/domain/providers/auth_provider.dart';
+import 'package:notes_order/domain/providers/user_role_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/repositories/auth_repository.dart';
 
@@ -36,6 +38,7 @@ class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationS
     final user = _auth.currentUser;
     if (user == null) return;
 
+    // Memaksa Firebase menarik data terbaru dari server
     await user.reload();
 
     setState(() {
@@ -45,6 +48,7 @@ class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationS
     if (_auth.currentUser!.emailVerified) {
       _timer?.cancel();
 
+      // Update status di Supabase
       await _supabase
           .from('users')
           .update({'email_verified': true})
@@ -54,9 +58,17 @@ class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationS
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Email berhasil diverifikasi!'), backgroundColor: Color(0xFF1E8E3E), behavior: SnackBarBehavior.floating),
+          const SnackBar(
+            content: Text('Email berhasil diverifikasi! Memuat Dashboard...'), 
+            backgroundColor: Color(0xFF1E8E3E), 
+            behavior: SnackBarBehavior.floating
+          ),
         );
       }
+      
+      ref.invalidate(authStateProvider);
+      ref.invalidate(userRoleProvider);
+      
       return;
     }
 
@@ -77,7 +89,7 @@ class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationS
       }
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     final minutes = (_secondsLeft / 60).floor().toString().padLeft(2, '0');
