@@ -54,7 +54,7 @@ class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationS
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Email berhasil diverifikasi!'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Email berhasil diverifikasi!'), backgroundColor: Color(0xFF1E8E3E), behavior: SnackBarBehavior.floating),
         );
       }
       return;
@@ -71,6 +71,7 @@ class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationS
             content: Text('Waktu verifikasi habis. Silakan login kembali dan pastikan link di email Anda sudah diklik.'),
             backgroundColor: Colors.orange,
             duration: Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -81,53 +82,144 @@ class _WaitingVerificationScreenState extends ConsumerState<WaitingVerificationS
   Widget build(BuildContext context) {
     final minutes = (_secondsLeft / 60).floor().toString().padLeft(2, '0');
     final seconds = (_secondsLeft % 60).toString().padLeft(2, '0');
+    // Menghitung progress persentase untuk indikator lingkaran
+    final double progress = _secondsLeft / 180; 
 
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Icon(Icons.mark_email_unread, size: 100, color: Colors.orange),
-            const SizedBox(height: 24),
-            const Text(
-              'Verifikasi Email Anda',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Kami telah mengirimkan tautan verifikasi ke email:\n${_auth.currentUser?.email}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey, fontSize: 15),
-            ),
-            const SizedBox(height: 32),
-            const Center(
-              child: SizedBox(
-                height: 40,
-                width: 40,
-                child: CircularProgressIndicator(strokeWidth: 3),
+      backgroundColor: const Color(0xFFF0F2F5),
+      body: Stack(
+        children: [
+          // --- HEADER BACKGROUND ---
+          Container(
+            height: MediaQuery.of(context).size.height * 0.45,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF25313A), Color(0xFF3B56B9)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              'Menunggu verifikasi... Sisa waktu: $minutes:$seconds',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent),
+          ),
+          
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // --- KARTU WAITING VERIFICATION ---
+                    Container(
+                      padding: const EdgeInsets.all(32.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Animasi Stacked Icon (Loading Melingkari Ikon Email)
+                          SizedBox(
+                            height: 120,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox(
+                                  height: 100,
+                                  width: 100,
+                                  child: CircularProgressIndicator(
+                                    value: progress,
+                                    strokeWidth: 6,
+                                    backgroundColor: Colors.grey.shade200,
+                                    color: const Color(0xFFFF9800), // Warna orange
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(color: const Color(0xFFFFF3E0), shape: BoxShape.circle),
+                                  child: const Icon(Icons.mark_email_unread_outlined, size: 40, color: Color(0xFFFF9800)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          
+                          const Text(
+                            'Verifikasi Email',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF25313A)),
+                          ),
+                          const SizedBox(height: 12),
+                          
+                          RichText(
+                            textAlign: TextAlign.center,
+                            text: TextSpan(
+                              style: const TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
+                              children: [
+                                const TextSpan(text: 'Kami telah mengirimkan tautan verifikasi ke:\n'),
+                                TextSpan(
+                                  text: '${_auth.currentUser?.email}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF25313A)),
+                                ),
+                                const TextSpan(text: '\n\nSilakan buka kotak masuk email Anda dan klik tautan tersebut untuk mengaktifkan akun.'),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          
+                          // INDIKATOR WAKTU
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red.shade100),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.timer_outlined, color: Colors.red, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Sisa waktu: $minutes:$seconds',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red, fontSize: 16),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    // --- TOMBOL BATAL ---
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        _timer?.cancel();
+                        await ref.read(authRepositoryProvider).logout();
+                      },
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Batalkan & Kembali', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 40),
-            OutlinedButton.icon(
-              onPressed: () async {
-                _timer?.cancel();
-                await ref.read(authRepositoryProvider).logout();
-              },
-              icon: const Icon(Icons.arrow_back),
-              label: const Text('Batalkan & Kembali ke Login'),
-              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
