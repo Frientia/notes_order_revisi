@@ -2,9 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'firebase_options.dart'; 
 import 'core/routes/app_router.dart';
+
+// 1. FUNGSI PENJAGA LATAR BELAKANG (Wajib ditaruh di luar class manapun / Top-Level)
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Pastikan Firebase sudah diinisialisasi sebelum memproses notif background
+  await Firebase.initializeApp();
+  print("Notifikasi masuk saat aplikasi ditutup: ${message.messageId}");
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,6 +22,14 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform, 
     );
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
     print("Firebase berhasil diinisialisasi");
   } catch (e) {
     print("Error inisialisasi Firebase: $e");

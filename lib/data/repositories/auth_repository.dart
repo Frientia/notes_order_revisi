@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(FirebaseAuth.instance, Supabase.instance.client);
@@ -14,10 +15,35 @@ class AuthRepository {
 
   Future<void> login(String email, String password) async {
     try {
-      await _firebaseAuth.signInWithEmailAndPassword(
+      // 1. Simpan hasil login ke dalam variabel cred (UserCredential)
+      UserCredential cred = await _firebaseAuth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // 2. LOGIKA BARU: Simpan Token FCM jika login berhasil
+      if (cred.user != null) {
+        try {
+          // Minta izin memunculkan notifikasi di HP
+          await FirebaseMessaging.instance.requestPermission();
+          
+          // Ambil token unik dari HP yang sedang digunakan
+          String? tokenFCM = await FirebaseMessaging.instance.getToken();
+          
+          if (tokenFCM != null) {
+            // Simpan token ke tabel users di Supabase berdasarkan firebase_uid
+            await _supabase
+                .from('users')
+                .update({'fcm_token': tokenFCM})
+                .eq('firebase_uid', cred.user!.uid); 
+                
+            print("FCM Token berhasil disimpan ke database: $tokenFCM");
+          }
+        } catch (e) {
+          // Jika sekadar gagal ambil token, login harus tetap berjalan normal
+          print("Peringatan: Gagal menyimpan FCM token: $e");
+        }
+      }
     } on FirebaseAuthException catch (e) {
       throw Exception(_handleFirebaseError(e));
     } catch (e) {
@@ -41,6 +67,7 @@ class AuthRepository {
           'email': email,
           'role': 'petugas',
           'email_verified': false,
+          // fcm_token tidak perlu diisi saat register, biarkan terisi saat dia login
         });
         
       }
