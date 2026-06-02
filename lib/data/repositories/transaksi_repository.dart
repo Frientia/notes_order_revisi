@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:notes_order/core/services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -118,6 +119,37 @@ class TransaksiRepository {
         'status_transaksi': 'SELESAI',
         'tgl_pencatatan': DateTime.now().toIso8601String(), // Catat waktu asli eksekusi beli
       }).eq('id_pencatatan', idPencatatan);
+
+     // ==========================================================
+      // --- LOGIKA BARU: TEMBAK NOTIFIKASI KE HP BOSS ---
+      // ==========================================================
+      try {
+        // 1. Cari token FCM milik Boss di tabel users
+        // Pastikan kata 'eksekutif' di bawah ini cocok dengan role Boss di database Anda
+        final responseToken = await _supabase
+            .from('users')
+            .select('fcm_token')
+            .eq('role', 'boss') 
+            .limit(1)
+            .maybeSingle();
+
+        // 2. Jika token Boss ketemu (artinya Boss sudah pernah login di HP-nya)
+        if (responseToken != null && responseToken['fcm_token'] != null) {
+          String fcmTokenBoss = responseToken['fcm_token'];
+
+          // 3. Tarik pelatuk! Tembak notifikasi lewat Firebase
+          await NotificationService.kirimNotifKeBoss(
+            tokenBoss: fcmTokenBoss,
+            title: '✅ Pencatatan Baru Selesai!',
+            body: 'Petugas baru saja menyelesaikan input pengadaan sparepart. Ketuk untuk membuka dashboard.',
+          );
+        }
+      } catch (e) {
+        // Blok ini dibungkus try-catch agar jika notifikasi gagal (misal koneksi terputus tiba-tiba),
+        // aplikasi Petugas tidak menjadi error dan data transaksi tetap aman tersimpan.
+        print('Peringatan: Gagal mengirim notifikasi otomatis: $e');
+      }
+      // ==========================================================
 
     } catch (e) {
       throw Exception('Gagal memfinalisasi transaksi: $e');
