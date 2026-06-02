@@ -45,3 +45,7 @@ app.*.map.json
 /android/app/release
 
 .vscode/templates
+
+# Secret Keys / Firebase Credentials
+assets/service-account.json
+service-account.json

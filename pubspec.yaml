@@ -53,6 +53,9 @@ dependencies:
   share_plus: ^12.0.2
   path_provider: ^2.1.5
   dropdown_search: ^7.0.0
+  firebase_messaging: ^16.3.0
+  googleapis_auth: ^1.6.0
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +81,7 @@ flutter:
   # Tambahkan bagian assets ini jika belum ada
   assets:
     - assets/logo/
+    - assets/service-account.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:
