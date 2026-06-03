@@ -149,7 +149,7 @@ class PetugasDashboard extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Text('Draft #${draftState.idPencatatan} memiliki ${draftState.items.length} item di dalam keranjang yang belum di-checkout.', style: TextStyle(color: Colors.white.withAlpha(230))),
+                      Text('Draft #${draftState.idPencatatan} memiliki ${draftState.items.length} item di dalam Pencatatan yang belum di-selesaikan.', style: TextStyle(color: Colors.white.withAlpha(230))),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
