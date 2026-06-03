@@ -3,19 +3,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/toko_model.dart';
 import '../../domain/providers/toko_provider.dart';
 
-class TokoScreen extends ConsumerWidget {
+class TokoScreen extends ConsumerStatefulWidget {
   const TokoScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TokoScreen> createState() => _TokoScreenState();
+}
+
+class _TokoScreenState extends ConsumerState<TokoScreen> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final tokoState = ref.watch(tokoControllerProvider);
 
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(title: const Text('Kelola Data Toko')),
-      body: tokoState.when(
-        data: _buildTokoList,
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text('Error: $error')),
+      body: Column(
+        children: [
+          _buildSearchBar(),
+          Expanded(
+            child: tokoState.when(
+              data: _buildTokoList,
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(child: Text('Error: $error')),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showFormBottomSheet(context),
@@ -25,15 +40,46 @@ class TokoScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildSearchBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: TextField(
+        onChanged: (value) => setState(() => _searchQuery = value),
+        decoration: InputDecoration(
+          hintText: 'Cari nama toko atau alamat...',
+          prefixIcon: const Icon(Icons.search, color: Colors.grey),
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTokoList(List<TokoModel> listToko) {
+    final filteredList = listToko.where((toko) {
+      final query = _searchQuery.toLowerCase();
+      return toko.namaToko.toLowerCase().contains(query) ||
+          toko.alamat.toLowerCase().contains(query);
+    }).toList();
+
     if (listToko.isEmpty) {
       return const Center(child: Text('Belum ada data toko.'));
     }
 
+    if (filteredList.isEmpty) {
+      return const Center(child: Text('Toko tidak ditemukan.'));
+    }
+
     return ListView.builder(
-      itemCount: listToko.length,
+      itemCount: filteredList.length,
       itemBuilder: (context, index) {
-        return _TokoListItem(toko: listToko[index]);
+        return _TokoListItem(toko: filteredList[index]);
       },
     );
   }
@@ -48,6 +94,11 @@ class _TokoListItem extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: ListTile(
         leading: const CircleAvatar(
           backgroundColor: Colors.green,
@@ -55,7 +106,7 @@ class _TokoListItem extends ConsumerWidget {
         ),
         title: Text(
           toko.namaToko,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         subtitle: Text(
           '${toko.noTelp}\n${toko.alamat}',

@@ -3,19 +3,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/mobil_model.dart';
 import '../../domain/providers/mobil_provider.dart';
 
-class MobilScreen extends ConsumerWidget {
+class MobilScreen extends ConsumerStatefulWidget {
   const MobilScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MobilScreen> createState() => _MobilScreenState();
+}
+
+class _MobilScreenState extends ConsumerState<MobilScreen> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final mobilState = ref.watch(mobilControllerProvider);
 
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(title: const Text('Kelola Data Mobil')),
-      body: mobilState.when(
-        data: _buildMobilList,
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text('Error: $error')),
+      body: Column(
+        children: [
+          _buildSearchBar(),
+          Expanded(
+            child: mobilState.when(
+              data: _buildMobilList,
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(child: Text('Error: $error')),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showFormBottomSheet(context),
@@ -25,15 +40,47 @@ class MobilScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildSearchBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: TextField(
+        onChanged: (value) => setState(() => _searchQuery = value),
+        decoration: InputDecoration(
+          hintText: 'Cari plat mobil atau kategori...',
+          prefixIcon: const Icon(Icons.search, color: Colors.grey),
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMobilList(List<MobilModel> listMobil) {
+    final filteredList = listMobil.where((mobil) {
+      final query = _searchQuery.toLowerCase();
+      final platMatch = mobil.noPlat.toLowerCase().contains(query);
+      final kategoriMatch = mobil.kategori?.label.toLowerCase().contains(query) ?? false;
+      return platMatch || kategoriMatch;
+    }).toList();
+
     if (listMobil.isEmpty) {
       return const Center(child: Text('Belum ada data mobil.'));
     }
 
+    if (filteredList.isEmpty) {
+      return const Center(child: Text('Mobil tidak ditemukan.'));
+    }
+
     return ListView.builder(
-      itemCount: listMobil.length,
+      itemCount: filteredList.length,
       itemBuilder: (context, index) {
-        return _MobilListItem(mobil: listMobil[index]);
+        return _MobilListItem(mobil: filteredList[index]);
       },
     );
   }
@@ -48,6 +95,11 @@ class _MobilListItem extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: ListTile(
         leading: const CircleAvatar(
           backgroundColor: Colors.blue,
@@ -55,7 +107,7 @@ class _MobilListItem extends ConsumerWidget {
         ),
         title: Text(
           mobil.noPlat,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         subtitle: Text(
           '${mobil.kategori?.label ?? 'Tanpa Kategori'} | Tahun: ${mobil.tahun ?? '-'}',

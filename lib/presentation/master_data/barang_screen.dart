@@ -3,19 +3,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/barang_model.dart';
 import '../../domain/providers/barang_provider.dart';
 
-class BarangScreen extends ConsumerWidget {
+class BarangScreen extends ConsumerStatefulWidget {
   const BarangScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BarangScreen> createState() => _BarangScreenState();
+}
+
+class _BarangScreenState extends ConsumerState<BarangScreen> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final barangState = ref.watch(barangControllerProvider);
 
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(title: const Text('Kelola Data Barang')),
-      body: barangState.when(
-        data: _buildBarangList,
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text('Terjadi kesalahan: $error')),
+      body: Column(
+        children: [
+          _buildSearchBar(),
+          Expanded(
+            child: barangState.when(
+              data: _buildBarangList,
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(child: Text('Terjadi kesalahan: $error')),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showFormBottomSheet(context),
@@ -25,15 +40,47 @@ class BarangScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildSearchBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: TextField(
+        onChanged: (value) => setState(() => _searchQuery = value),
+        decoration: InputDecoration(
+          hintText: 'Cari nama barang atau kategori...',
+          prefixIcon: const Icon(Icons.search, color: Colors.grey),
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBarangList(List<BarangModel> listBarang) {
+    final filteredList = listBarang.where((barang) {
+      final query = _searchQuery.toLowerCase();
+      final namaMatch = barang.namaBarang.toLowerCase().contains(query);
+      final kategoriMatch = barang.kategori?.label.toLowerCase().contains(query) ?? false;
+      return namaMatch || kategoriMatch;
+    }).toList();
+
     if (listBarang.isEmpty) {
       return const Center(child: Text('Belum ada data barang.'));
     }
 
+    if (filteredList.isEmpty) {
+      return const Center(child: Text('Barang tidak ditemukan.'));
+    }
+
     return ListView.builder(
-      itemCount: listBarang.length,
+      itemCount: filteredList.length,
       itemBuilder: (context, index) {
-        return _BarangListItem(barang: listBarang[index]);
+        return _BarangListItem(barang: filteredList[index]);
       },
     );
   }
@@ -48,6 +95,11 @@ class _BarangListItem extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: Colors.blue.shade100,
