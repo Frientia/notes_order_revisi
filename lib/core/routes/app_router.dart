@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:notes_order/domain/providers/auth_provider.dart';
 import 'package:notes_order/domain/providers/user_role_provider.dart';
 import 'package:notes_order/presentation/auth/login_screen.dart';
+import 'package:notes_order/presentation/dashboard/riwayat_notif_screen.dart';
 import 'package:notes_order/presentation/master_data/barang_screen.dart';
 import 'package:notes_order/presentation/master_data/mobil_screen.dart';
 import 'package:notes_order/presentation/master_data/toko_screen.dart';
@@ -148,6 +149,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/splash', 
         builder: (context, state) => const SplashScreen()
+      ),
+      GoRoute(
+        path: '/notifikasi', 
+        builder: (context, state) => const RiwayatNotifScreen()
       ),
     ],
   );

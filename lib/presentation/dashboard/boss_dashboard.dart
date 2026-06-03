@@ -28,11 +28,14 @@ class BossDashboard extends ConsumerWidget {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // --- PERBAIKAN 1: TOMBOL LONCENG NOTIFIKASI DI APPBAR ---
           IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Keluar',
-            onPressed: () async =>
-                await ref.read(authRepositoryProvider).logout(),
+            icon: const Icon(Icons.notifications_active),
+            tooltip: 'Kotak Masuk Notifikasi',
+            onPressed: () {
+              // Pastikan Anda mendaftarkan '/notifikasi' di app_router.dart Anda
+              context.push('/notifikasi'); 
+            },
           ),
         ],
       ),
@@ -75,9 +78,7 @@ class BossDashboard extends ConsumerWidget {
                     title: const Text('Riwayat Keseluruhan'),
                     onTap: () {
                       Navigator.pop(context); // 1. Tutup drawer terlebih dahulu
-                      context.push(
-                        '/riwayat-boss',
-                      ); // 2. Pindah ke rute halaman riwayat
+                      context.push('/riwayat-boss'); // 2. Pindah ke rute halaman riwayat
                     },
                   ),
 
@@ -121,6 +122,21 @@ class BossDashboard extends ConsumerWidget {
                 ],
               ),
             ),
+            
+            // --- PERBAIKAN 2: TOMBOL KELUAR DI PIN PALING BAWAH DRAWER ---
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text(
+                'Keluar',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+              onTap: () async {
+                Navigator.pop(context); // Tutup drawer sebelum logout
+                await ref.read(authRepositoryProvider).logout();
+              },
+            ),
+            const SizedBox(height: 16), // Memberikan sedikit jarak dari layar bawah
           ],
         ),
       ),
@@ -247,7 +263,6 @@ class BossDashboard extends ConsumerWidget {
     bool isFullWidth = false,
   }) {
     return Container(
-      // Padding dikurangi sedikit agar ruang untuk teks lebih luas di layar kecil
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -263,7 +278,7 @@ class BossDashboard extends ConsumerWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10), // Padding icon disesuaikan
+            padding: const EdgeInsets.all(10), 
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               shape: BoxShape.circle,
@@ -272,7 +287,7 @@ class BossDashboard extends ConsumerWidget {
               icon,
               color: color,
               size: 24,
-            ), // Ukuran icon disesuaikan
+            ), 
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -282,7 +297,7 @@ class BossDashboard extends ConsumerWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 11, // Ukuran judul sedikit dirapikan
+                    fontSize: 11, 
                     color: Colors.grey[600],
                     fontWeight: FontWeight.w600,
                   ),
@@ -290,8 +305,6 @@ class BossDashboard extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                // --- PERBAIKAN: Menggunakan FittedBox ---
-                // Teks akan otomatis mengecil jika layarnya sempit, tidak akan terpotong!
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
@@ -329,7 +342,6 @@ class BossDashboard extends ConsumerWidget {
     );
   }
 
-  // --- HELPER METHOD: TABEL INTERAKTIF PENCATATAN TERBARU ---
   Widget _buildRecentTransactionsTable(BuildContext context, WidgetRef ref) {
     final recentData = ref.watch(recentTransaksiDashboardProvider);
 
@@ -510,7 +522,6 @@ class BossDashboard extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                         onPressed: () {
-                          // Navigasi GoRouter yang serasi dengan isi Drawer Anda
                           context.push('/riwayat-boss');
                         },
                         child: const Text(
@@ -532,7 +543,6 @@ class BossDashboard extends ConsumerWidget {
     );
   }
 
-  // --- KONFIGURASI GRAFIK DINAMIS ---
   LineChartData _buildCombinedChartData(DashboardData data) {
     List<double> belanjaJutaan = data.belanja6Bulan
         .map((e) => e / 1000000)
