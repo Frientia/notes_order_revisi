@@ -237,7 +237,7 @@ class BossDashboard extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
+                          color: Colors.grey.withValues(alpha: 0.1),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -269,7 +269,7 @@ class BossDashboard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -280,7 +280,7 @@ class BossDashboard extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(10), 
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -362,7 +362,7 @@ class BossDashboard extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.15),
+                    color: Colors.orange.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -480,7 +480,7 @@ class BossDashboard extends ConsumerWidget {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.blueGrey.withOpacity(0.08),
+                                    color: Colors.blueGrey.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
@@ -610,7 +610,7 @@ class BossDashboard extends ConsumerWidget {
           dotData: const FlDotData(show: true),
           belowBarData: BarAreaData(
             show: true,
-            color: Colors.blue.withOpacity(0.1),
+            color: Colors.blue.withValues(alpha: 0.1),
           ),
         ),
         LineChartBarData(

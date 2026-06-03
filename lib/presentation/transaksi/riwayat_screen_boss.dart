@@ -226,7 +226,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.indigo.withOpacity(0.3),
+                            color: Colors.indigo.withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -363,8 +363,8 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                                     ),
                                     decoration: BoxDecoration(
                                       color: isLunas
-                                          ? Colors.green.withOpacity(0.1)
-                                          : Colors.orange.withOpacity(0.1),
+                                          ? Colors.green.withValues(alpha: 0.1)
+                                          : Colors.orange.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
@@ -495,7 +495,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(

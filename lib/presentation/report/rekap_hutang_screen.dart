@@ -231,7 +231,7 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                           ),
                           leading: CircleAvatar(
                             radius: 22,
-                            backgroundColor: Colors.red.withOpacity(0.08),
+                            backgroundColor: Colors.red.withValues(alpha: 0.08),
                             child: const Icon(
                               Icons.store,
                               color: Colors.red,
@@ -711,7 +711,7 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                                     leading: Container(
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
-                                        color: Colors.red.withOpacity(0.1),
+                                        color: Colors.red.withValues(alpha: 0.1),
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(

@@ -64,7 +64,7 @@ class RiwayatNotifScreen extends ConsumerWidget {
                   color: isRead ? Colors.grey.shade100 : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: isRead ? [] : [
-                    BoxShadow(color: Colors.grey.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2)),
+                    BoxShadow(color: Colors.grey.withValues(alpha: 0.08), blurRadius: 4, offset: const Offset(0, 2)),
                   ],
                   border: Border.all(color: isRead ? Colors.grey.shade300 : Colors.blue.shade100),
                 ),

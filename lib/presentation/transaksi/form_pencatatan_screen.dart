@@ -71,7 +71,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt, color: Colors.blue),
-              title: const Text('Buka Kamera'),
+              title: const Text('Buka Kamera/upload Foto'),
               onTap: () {
                 Navigator.pop(sheetContext);
                 _pickImage(idDetail, ImageSource.camera);
