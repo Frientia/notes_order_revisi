@@ -123,6 +123,9 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
             grandTotal: grandTotal,
             finalItemsData: finalDataPayload,
           );
+      
+      ref.invalidate(transaksiDraftProvider);
+      ref.invalidate(barangControllerProvider);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
