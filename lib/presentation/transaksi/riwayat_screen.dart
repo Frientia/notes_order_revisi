@@ -9,7 +9,10 @@ import '../../core/utils/report_generator.dart';
 // 1. Provider State untuk menyimpan status Filter Waktu saat ini
 final riwayatFilterProvider = StateProvider<String>((ref) => 'Bulan Ini');
 
-// 2. Provider Data Riwayat yang bereaksi terhadap perubahan Filter
+// 2. Provider State untuk menyimpan teks pencarian (Search)
+final riwayatSearchProvider = StateProvider<String>((ref) => '');
+
+// 3. Provider Data Riwayat yang bereaksi terhadap perubahan Filter Waktu
 final filteredRiwayatProvider = FutureProvider.autoDispose<List<PencatatanModel>>((ref) async {
   final filter = ref.watch(riwayatFilterProvider);
   final repo = ref.watch(riwayatRepositoryProvider);
@@ -28,24 +31,37 @@ final filteredRiwayatProvider = FutureProvider.autoDispose<List<PencatatanModel>
     startDate = DateTime(now.year, now.month - 2, 1);
     endDate = DateTime(now.year, now.month - 1, 0, 23, 59, 59);
   } 
-  // Jika 'Semua Waktu', biarkan null
 
   return repo.getRiwayat(startDate: startDate, endDate: endDate);
 });
 
 
-class RiwayatScreen extends ConsumerWidget {
+class RiwayatScreen extends ConsumerStatefulWidget {
   const RiwayatScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RiwayatScreen> createState() => _RiwayatScreenState();
+}
+
+class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
+  final _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final riwayatAsync = ref.watch(filteredRiwayatProvider);
     final currentFilter = ref.watch(riwayatFilterProvider);
+    final searchQuery = ref.watch(riwayatSearchProvider).toLowerCase();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5), // Latar belakang abu-abu sangat muda khas aplikasi modern
+      backgroundColor: const Color(0xFFF0F2F5), 
       appBar: AppBar(
-        backgroundColor: const Color(0xFF25313A), // Warna gelap elegan sesuai gambar
+        backgroundColor: const Color(0xFF25313A), 
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text('Riwayat Transaksi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
@@ -80,15 +96,29 @@ class RiwayatScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // 1. BAGIAN HEADER (SEARCH BAR VISUAL)
+          // 1. BAGIAN HEADER (SEARCH BAR VISUAL AKTIF)
           Container(
             color: const Color(0xFF25313A),
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: TextField(
+              controller: _searchCtrl,
+              onChanged: (value) {
+                // Mengirim hasil ketikan ke Provider Search
+                ref.read(riwayatSearchProvider.notifier).state = value;
+              },
               decoration: InputDecoration(
-                hintText: 'Cari barang, nopol, atau petugas...',
+                hintText: 'Cari barang, nopol, toko atau nota...',
                 hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
                 prefixIcon: Icon(Icons.search, color: Colors.grey.shade500),
+                suffixIcon: searchQuery.isNotEmpty 
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.grey),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          ref.read(riwayatSearchProvider.notifier).state = '';
+                        },
+                      )
+                    : null,
                 filled: true,
                 fillColor: Colors.white,
                 isDense: true,
@@ -154,12 +184,33 @@ class RiwayatScreen extends ConsumerWidget {
           Expanded(
             child: riwayatAsync.when(
               data: (listRiwayat) {
+                // 🔥 LOGIKA PENCARIAN (FILTERING CANGGIH) 🔥
+                final displayedRiwayat = listRiwayat.where((riwayat) {
+                  if (searchQuery.isEmpty) return true;
+
+                  // 1. Cek kecocokan ID Nota
+                  if (riwayat.idPencatatan.toString().contains(searchQuery)) return true;
+
+                  // 2. Cek kecocokan detail di dalam nota (Nama Barang / Plat Mobil / Nama Toko)
+                  final matchDetails = riwayat.details.any((detail) {
+                    return detail.namaBarang.toLowerCase().contains(searchQuery) ||
+                           detail.noPlatMobil.toLowerCase().contains(searchQuery) ||
+                           detail.namaToko.toLowerCase().contains(searchQuery);
+                  });
+
+                  return matchDetails;
+                }).toList();
+
                 if (listRiwayat.isEmpty) {
                   return const Center(child: Text('Tidak ada transaksi pada periode ini.', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)));
                 }
 
-                // Kalkulasi Grand Total untuk Summary Card
-                double grandTotalPeriode = listRiwayat.fold(0, (sum, item) => sum + item.totalHarga);
+                if (displayedRiwayat.isEmpty) {
+                  return const Center(child: Text('Data yang Anda cari tidak ditemukan.', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)));
+                }
+
+                // Kalkulasi Grand Total Dinamis (Sesuai hasil pencarian)
+                double grandTotalPeriode = displayedRiwayat.fold(0, (sum, item) => sum + item.totalHarga);
                 
                 return ListView(
                   padding: const EdgeInsets.all(16),
@@ -176,13 +227,16 @@ class RiwayatScreen extends ConsumerWidget {
                         ),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
-                          BoxShadow(color: const Color(0xFF3B56B9).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                          BoxShadow(color: const Color(0xFF3B56B9).withAlpha(77), blurRadius: 10, offset: const Offset(0, 4)),
                         ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Total Pengeluaran (Periode Filter)', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                          Text(
+                            searchQuery.isEmpty ? 'Total Pengeluaran (Periode Filter)' : 'Total Pengeluaran (Hasil Pencarian)', 
+                            style: const TextStyle(color: Colors.white70, fontSize: 13)
+                          ),
                           const SizedBox(height: 8),
                           Text(
                             AppFormatters.rupiah(grandTotalPeriode), 
@@ -193,7 +247,7 @@ class RiwayatScreen extends ConsumerWidget {
                             children: [
                               const Icon(Icons.receipt_long, color: Colors.white70, size: 16),
                               const SizedBox(width: 8),
-                              Text('${listRiwayat.length} Transaksi Tercatat', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                              Text('${displayedRiwayat.length} Transaksi Ditampilkan', style: const TextStyle(color: Colors.white70, fontSize: 13)),
                             ],
                           )
                         ],
@@ -201,8 +255,7 @@ class RiwayatScreen extends ConsumerWidget {
                     ),
 
                     // LIST ITEM TRANSAKSI
-                    ...listRiwayat.map((riwayat) {
-                      // Ambil detail pertama sebagai cuplikan UI
+                    ...displayedRiwayat.map((riwayat) {
                       final detailPreview = riwayat.details.isNotEmpty ? riwayat.details.first : null;
                       final sisaItem = riwayat.details.length > 1 ? riwayat.details.length - 1 : 0;
 
@@ -216,13 +269,12 @@ class RiwayatScreen extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: Colors.grey.shade200),
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2)),
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2)),
                             ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Header Item: Nota, Tanggal & Status
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
@@ -242,7 +294,6 @@ class RiwayatScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 12),
 
-                              // Judul Barang
                               Text(
                                 detailPreview != null 
                                     ? '${detailPreview.namaBarang}${sisaItem > 0 ? ' (+$sisaItem item lain)' : ''}' 
@@ -251,7 +302,6 @@ class RiwayatScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 12),
 
-                              // Info Tags (Toko & Mobil)
                               if (detailPreview != null)
                                 Row(
                                   children: [
@@ -286,7 +336,6 @@ class RiwayatScreen extends ConsumerWidget {
                                 child: Divider(height: 1),
                               ),
 
-                              // Footer: Petugas & Harga
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 crossAxisAlignment: CrossAxisAlignment.end,
