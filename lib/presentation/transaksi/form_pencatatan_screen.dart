@@ -52,15 +52,70 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     super.dispose();
   }
 
-  Future<void> _pickKwitansiPerItem(int idDetail) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      setState(() {
-        _kwitansiBytesMap[idDetail] = bytes;
-        _kwitansiNameMap[idDetail] = pickedFile.name;
-      });
+  void _showImageSourceOptions(BuildContext context, int idDetail) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Upload Kwitansi',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.blue),
+              title: const Text('Buka Kamera'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickImage(idDetail, ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.green),
+              title: const Text('Pilih dari Galeri'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickImage(idDetail, ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(int idDetail, ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        imageQuality: 70, 
+      );
+
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _kwitansiBytesMap[idDetail] = bytes;
+          _kwitansiNameMap[idDetail] = image.name;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat gambar: $e'), 
+            backgroundColor: Colors.red
+          ),
+        );
+      }
     }
   }
 
@@ -596,7 +651,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                   side: BorderSide(color: _kwitansiBytesMap.containsKey(idDetail) ? Colors.green : Colors.grey.shade300),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
-                                onPressed: () => _pickKwitansiPerItem(idDetail),
+                                onPressed: () => _showImageSourceOptions(context, idDetail),
                                 icon: Icon(_kwitansiBytesMap.containsKey(idDetail) ? Icons.check_circle : Icons.camera_alt, size: 18),
                                 label: Text(_kwitansiBytesMap.containsKey(idDetail) ? 'Kwitansi OK' : 'Foto Kwitansi'),
                               ),
