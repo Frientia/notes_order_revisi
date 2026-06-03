@@ -71,7 +71,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt, color: Colors.blue),
-              title: const Text('Buka Kamera/upload Foto'),
+              title: const Text('Buka Kamera'),
               onTap: () {
                 Navigator.pop(sheetContext);
                 _pickImage(idDetail, ImageSource.camera);
@@ -653,7 +653,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                 ),
                                 onPressed: () => _showImageSourceOptions(context, idDetail),
                                 icon: Icon(_kwitansiBytesMap.containsKey(idDetail) ? Icons.check_circle : Icons.camera_alt, size: 18),
-                                label: Text(_kwitansiBytesMap.containsKey(idDetail) ? 'Kwitansi OK' : 'Foto Kwitansi'),
+                                label: Text(_kwitansiBytesMap.containsKey(idDetail) ? 'Kwitansi OK' : 'Foto/Upload Kwitansi'),
                               ),
                               if (!_kwitansiBytesMap.containsKey(idDetail))
                                 const Text('*Wajib', style: TextStyle(color: Colors.red, fontSize: 12, fontStyle: FontStyle.italic)),
