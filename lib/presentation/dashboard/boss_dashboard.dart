@@ -2,20 +2,37 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/dashboard_boss_repository.dart';
 import '../../domain/providers/dashboard_boss_provider.dart';
 import '../../domain/providers/riwayat_provider_boss.dart'; // Import untuk recentTransaksiDashboardProvider
-import 'package:go_router/go_router.dart';
 import '../../core/utils/formatters.dart';
+
+// --- IMPORT UNTUK FITUR TITIK MERAH NOTIFIKASI ---
+import '../../domain/providers/riwayat_notif_boss_provider.dart';
+import '../../domain/providers/read_notif_provider.dart';
 
 class BossDashboard extends ConsumerWidget {
   const BossDashboard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Memantau state data dashboard (Loading / Error / Success)
+    // Memantau state data dashboard utama (Loading / Error / Success)
     final dashboardState = ref.watch(dashboardDataProvider);
+
+    // --- LOGIKA MENGHITUNG NOTIFIKASI BELUM DIBACA ---
+    final listNotifAsync = ref.watch(riwayatNotifBossProvider);
+    final readNotifs = ref.watch(readNotificationsProvider);
+    
+    int unreadCount = 0;
+    listNotifAsync.whenData((listData) {
+      // Hitung data yang ID-nya BELUM ADA di dalam memori yang sudah dibaca
+      unreadCount = listData.where((data) {
+        return !readNotifs.contains(data['id_pencatatan']);
+      }).length;
+    });
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -28,15 +45,38 @@ class BossDashboard extends ConsumerWidget {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          // --- PERBAIKAN 1: TOMBOL LONCENG NOTIFIKASI DI APPBAR ---
-          IconButton(
-            icon: const Icon(Icons.notifications_active),
-            tooltip: 'Kotak Masuk Notifikasi',
-            onPressed: () {
-              // Pastikan Anda mendaftarkan '/notifikasi' di app_router.dart Anda
-              context.push('/notifikasi'); 
-            },
+          // --- IKON LONCENG DENGAN TITIK MERAH (TANPA ANGKA) ---
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_active),
+                tooltip: 'Kotak Masuk Notifikasi',
+                onPressed: () {
+                  context.push('/notifikasi'); 
+                },
+              ),
+              // Jika ada notifikasi baru, munculkan titik merah kecil elegan
+              if (unreadCount > 0)
+                Positioned(
+                  right: 11, // Posisi digeser agar pas di lekukan lonceng
+                  top: 11,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.blueGrey[800]!, // Warna border senada dengan AppBar
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
+          const SizedBox(width: 8), // Sedikit jarak di kanan AppBar
         ],
       ),
 
@@ -72,22 +112,17 @@ class BossDashboard extends ConsumerWidget {
                     ),
                   ),
 
-                  // 1. MENU RIWAYAT KESELURUHAN
                   ListTile(
                     leading: const Icon(Icons.list_alt, color: Colors.indigo),
                     title: const Text('Riwayat Keseluruhan'),
                     onTap: () {
-                      Navigator.pop(context); // 1. Tutup drawer terlebih dahulu
-                      context.push('/riwayat-boss'); // 2. Pindah ke rute halaman riwayat
+                      Navigator.pop(context); 
+                      context.push('/riwayat-boss'); 
                     },
                   ),
 
-                  // 2. MENU AKUNTABILITAS PETUGAS
                   ListTile(
-                    leading: const Icon(
-                      Icons.assignment_ind,
-                      color: Colors.orange,
-                    ),
+                    leading: const Icon(Icons.assignment_ind, color: Colors.orange),
                     title: const Text('Akuntabilitas Petugas'),
                     onTap: () {
                       Navigator.pop(context);
@@ -95,7 +130,6 @@ class BossDashboard extends ConsumerWidget {
                     },
                   ),
 
-                  // 3. MENU REKAP HUTANG TOKO
                   ListTile(
                     leading: const Icon(Icons.store, color: Colors.teal),
                     title: const Text('Rekap Hutang Toko'),
@@ -107,12 +141,8 @@ class BossDashboard extends ConsumerWidget {
 
                   const Divider(),
 
-                  // 4. MENU CETAK LAPORAN PDF
                   ListTile(
-                    leading: const Icon(
-                      Icons.picture_as_pdf,
-                      color: Colors.redAccent,
-                    ),
+                    leading: const Icon(Icons.picture_as_pdf, color: Colors.redAccent),
                     title: const Text('Cetak Laporan PDF'),
                     onTap: () {
                       Navigator.pop(context);
@@ -123,7 +153,6 @@ class BossDashboard extends ConsumerWidget {
               ),
             ),
             
-            // --- PERBAIKAN 2: TOMBOL KELUAR DI PIN PALING BAWAH DRAWER ---
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
@@ -132,11 +161,11 @@ class BossDashboard extends ConsumerWidget {
                 style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
               ),
               onTap: () async {
-                Navigator.pop(context); // Tutup drawer sebelum logout
+                Navigator.pop(context); 
                 await ref.read(authRepositoryProvider).logout();
               },
             ),
-            const SizedBox(height: 16), // Memberikan sedikit jarak dari layar bawah
+            const SizedBox(height: 16), 
           ],
         ),
       ),
@@ -543,26 +572,70 @@ class BossDashboard extends ConsumerWidget {
     );
   }
 
+  // --- KONFIGURASI GRAFIK DINAMIS (REFACTORING UI) ---
   LineChartData _buildCombinedChartData(DashboardData data) {
+    // Data diubah ke jutaan untuk skala grafik
     List<double> belanjaJutaan = data.belanja6Bulan
         .map((e) => e / 1000000)
         .toList();
 
-    double maxBelanja = belanjaJutaan.isNotEmpty
-        ? belanjaJutaan.reduce(max)
-        : 0;
-    double maxTransaksi = data.transaksi6Bulan.isNotEmpty
-        ? data.transaksi6Bulan.reduce(max).toDouble()
-        : 0;
+    double maxBelanja = belanjaJutaan.isNotEmpty ? belanjaJutaan.reduce(max) : 0;
+    double maxTransaksi = data.transaksi6Bulan.isNotEmpty ? data.transaksi6Bulan.reduce(max).toDouble() : 0;
+    
+    // Mencari titik tertinggi untuk batas atas grafik
     double highestY = max(maxBelanja, maxTransaksi);
     double maxYLimit = highestY > 0 ? highestY + (highestY * 0.2) : 10;
+    
+    // Menentukan jarak antar angka di sumbu Y agar tidak tumpang tindih
+    double intervalY = (maxYLimit / 5).ceilToDouble();
+    if (intervalY == 0) intervalY = 1; // Mencegah interval 0 jika data kosong
 
     return LineChartData(
-      gridData: const FlGridData(show: true, drawVerticalLine: false),
-      titlesData: FlTitlesData(
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
+      gridData: FlGridData(
+        show: true, 
+        drawVerticalLine: false,
+        horizontalInterval: intervalY, // Garis grid mengikuti interval Y
+      ),
+      
+      // --- PERBAIKAN TOOLTIP SAAT GRAFIK DITEKAN ---
+      lineTouchData: LineTouchData(
+        touchTooltipData: LineTouchTooltipData(
+          // Warna background pop-up tooltip
+          getTooltipColor: (touchedSpot) => Colors.blueGrey.shade900,
+          getTooltipItems: (List<LineBarSpot> touchedSpots) {
+            return touchedSpots.map((spot) {
+              // Index 0 = Uang Belanja (Biru), Index 1 = Jml Transaksi (Hijau)
+              final isBelanja = spot.barIndex == 0;
+              
+              if (isBelanja) {
+                // Kembalikan ke nilai asli (dikali 1 juta) untuk ditampilkan sbg Rupiah
+                final double realValue = spot.y * 1000000;
+                return LineTooltipItem(
+                  AppFormatters.rupiah(realValue),
+                  const TextStyle(
+                    color: Colors.lightBlueAccent, 
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                );
+              } else {
+                // Tampilan untuk Jml Transaksi
+                return LineTooltipItem(
+                  '${spot.y.toInt()} Nota',
+                  const TextStyle(
+                    color: Colors.greenAccent, 
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                );
+              }
+            }).toList();
+          },
         ),
+      ),
+
+      titlesData: FlTitlesData(
+        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
@@ -576,9 +649,10 @@ class BossDashboard extends ConsumerWidget {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
                     data.labelBulan[index],
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
+                      color: Colors.grey[600]
                     ),
                   ),
                 );
@@ -587,8 +661,26 @@ class BossDashboard extends ConsumerWidget {
             },
           ),
         ),
-        leftTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: true, reservedSize: 35),
+        
+        // --- PERBAIKAN SUMBU Y AGAR RAPI & TIDAK TUMPANG TINDIH ---
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true, 
+            reservedSize: 35, // Ruang lega untuk angka
+            interval: intervalY, // Memaksa jarak angka konstan (misal: 0, 5, 10, 15)
+            getTitlesWidget: (value, meta) {
+              // Menghilangkan angka desimal, tampilkan angka bulat saja
+              return Text(
+                value.toInt().toString(),
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              );
+            },
+          ),
         ),
       ),
       borderData: FlBorderData(show: false),
@@ -598,27 +690,32 @@ class BossDashboard extends ConsumerWidget {
       maxY: maxYLimit,
 
       lineBarsData: [
+        // 1. GARIS BIRU (UANG BELANJA)
         LineChartBarData(
           spots: List.generate(
             6,
             (i) => FlSpot(i.toDouble(), belanjaJutaan[i]),
           ),
           isCurved: true,
+          preventCurveOverShooting: true, // PERBAIKAN: Cegah lengkungan menukik di bawah 0
           color: Colors.blue,
           barWidth: 4,
           isStrokeCapRound: true,
           dotData: const FlDotData(show: true),
           belowBarData: BarAreaData(
             show: true,
-            color: Colors.blue.withValues(alpha: 0.1),
+            color: Colors.blue.withOpacity(0.1), // Gunakan withOpacity untuk Flutter versi aman
           ),
         ),
+        
+        // 2. GARIS HIJAU (JML TRANSAKSI)
         LineChartBarData(
           spots: List.generate(
             6,
             (i) => FlSpot(i.toDouble(), data.transaksi6Bulan[i].toDouble()),
           ),
           isCurved: true,
+          preventCurveOverShooting: true, // PERBAIKAN: Cegah lengkungan menukik di bawah 0
           color: Colors.green,
           barWidth: 4,
           isStrokeCapRound: true,
