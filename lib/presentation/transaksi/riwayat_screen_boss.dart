@@ -37,8 +37,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
 
     // Menghitung jumlah filter lanjutan yang aktif
     int activeAdvancedFilters = 0;
-    if (ref.watch(filterKategoriBarangProvider) != null)
-      activeAdvancedFilters++;
+    if (ref.watch(filterKategoriBarangProvider) != null)activeAdvancedFilters++;
     if (ref.watch(filterKategoriMobilProvider) != null) activeAdvancedFilters++;
     if (ref.watch(filterPetugasProvider) != null) activeAdvancedFilters++;
     if (ref.watch(filterNamaBarangProvider) != null) activeAdvancedFilters++;
