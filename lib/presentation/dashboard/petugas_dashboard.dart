@@ -23,16 +23,6 @@ class PetugasDashboard extends ConsumerWidget {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         title: const Text('Dashboard Logistik', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          // Tambahan ikon notifikasi kecil untuk estetika modern
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tidak ada notifikasi baru')));
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       
       // --- HAMBURGER MENU (DRAWER KIRI) ---
