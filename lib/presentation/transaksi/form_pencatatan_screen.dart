@@ -39,6 +39,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   final Map<int, String> _statusPembayaranMap = {};
   final Map<int, Uint8List> _kwitansiBytesMap = {};
   final Map<int, String> _kwitansiNameMap = {};
+  final Map<int, int> _kwitansiRefMap = {};
 
   bool _isSubmitting = false;
 
@@ -53,21 +54,19 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   }
 
   void _showImageSourceOptions(BuildContext context, int idDetail) {
+    final existingKeys = _kwitansiBytesMap.keys.where((k) => k != idDetail).toList();
+    final hasPreviousImage = existingKeys.isNotEmpty;
+
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Padding(
               padding: EdgeInsets.all(16.0),
-              child: Text(
-                'Upload Kwitansi',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              child: Text('Upload Kwitansi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt, color: Colors.blue),
@@ -85,6 +84,26 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                 _pickImage(idDetail, ImageSource.gallery);
               },
             ),
+            if (hasPreviousImage) ...[
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.file_copy_rounded, color: Colors.purple),
+                title: const Text('Gunakan Kwitansi Sebelumnya'),
+                subtitle: const Text('Menyalin referensi struk dari item di atas'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  setState(() {
+                    final prevKey = existingKeys.last;
+                    _kwitansiBytesMap[idDetail] = _kwitansiBytesMap[prevKey]!;
+                    _kwitansiNameMap[idDetail] = _kwitansiNameMap[prevKey]!;
+                    _kwitansiRefMap[idDetail] = _kwitansiRefMap[prevKey]!; 
+                  });
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Referensi Kwitansi ditambahkan!'), backgroundColor: Colors.purple));
+                  }
+                },
+              ),
+            ],
             const SizedBox(height: 8),
           ],
         ),
@@ -95,26 +114,19 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   Future<void> _pickImage(int idDetail, ImageSource source) async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: source,
-        imageQuality: 70, 
-      );
+      final XFile? image = await picker.pickImage(source: source, imageQuality: 70);
 
       if (image != null) {
         final bytes = await image.readAsBytes();
         setState(() {
           _kwitansiBytesMap[idDetail] = bytes;
           _kwitansiNameMap[idDetail] = image.name;
+          _kwitansiRefMap[idDetail] = idDetail; 
         });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal memuat gambar: $e'), 
-            backgroundColor: Colors.red
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
       }
     }
   }
@@ -161,13 +173,18 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
         final idDetail = item['id_detail_pencatatan'] as int;
         final hargaInput = double.tryParse(_hargaRiilControllers[idDetail]?.text ?? '') ?? 0;
         final statusInput = _statusPembayaranMap[idDetail] ?? 'SELESAI';
+        
+        final refId = _kwitansiRefMap[idDetail] ?? idDetail;
+        final isMaster = refId == idDetail;
 
         finalDataPayload.add({
           'id_detail_pencatatan': idDetail,
           'harga_pembelian_barang': hargaInput,
           'status': statusInput,
-          'image_bytes': _kwitansiBytesMap[idDetail],
-          'image_name': _kwitansiNameMap[idDetail],
+          'kwitansi_ref_id': refId,
+          
+          'image_bytes': isMaster ? _kwitansiBytesMap[idDetail] : null, 
+          'image_name': isMaster ? _kwitansiNameMap[idDetail] : null,
         });
       }
 
