@@ -21,7 +21,6 @@ class _P {
   static const surface    = Color(0xFFFFFFFF); // card surface
   static const surfaceAlt = Color(0xFFF1F5F9); // alt row
   static const border     = Color(0xFFE2E8F0); // divider
-  static const borderSoft = Color(0xFFF1F5F9); // subtle border
 
   // text
   static const t1 = Color(0xFF0F172A); // primary
@@ -323,7 +322,7 @@ class _KpiCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-// RECENT TRANSACTIONS CARD
+// RECENT TRANSACTIONS CARD (FIXED & REFACTORED)
 // ─────────────────────────────────────────────
 class _RecentTransactionsCard extends StatelessWidget {
   final WidgetRef ref;
@@ -374,130 +373,130 @@ class _RecentTransactionsCard extends StatelessWidget {
             );
           }
 
-          return Column(children: [
-            // Table header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: _P.surfaceAlt,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-              ),
-              child: Row(children: const [
-                SizedBox(width: 20,
-                    child: Text('#', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _P.t3))),
-                SizedBox(width: 8),
-                Expanded(flex: 3,
-                    child: Text('PETUGAS / BARANG', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _P.t3))),
-                Expanded(flex: 2,
-                    child: Text('PLAT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _P.t3), textAlign: TextAlign.center)),
-                Expanded(flex: 2,
-                    child: Text('HARGA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _P.t3), textAlign: TextAlign.right)),
-              ]),
-            ),
-            Divider(color: _P.border, height: 1),
+          // ─── LOGIKA SINKRONISASI NOTA: 1 NOTA CUKUP 1 BARANG YANG TAMPIL ───
+          final Map<int, dynamic> uniqueNotaMap = {};
+          for (var item in listData) {
+            // Jika idNota belum terdaftar, masukkan barang pertama ini sebagai perwakilan
+            if (!uniqueNotaMap.containsKey(item.idNota)) {
+              uniqueNotaMap[item.idNota] = item;
+            }
+          }
+          // Ubah kembali map menjadi list data final untuk di-render ke tabel
+          final finalDisplayList = uniqueNotaMap.values.toList();
 
-            // Rows
-            ...List.generate(listData.length, (i) {
-              final item = listData[i];
-              return Column(children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // No
-                      SizedBox(
-                        width: 20,
-                        child: Text('${i + 1}',
-                            style: const TextStyle(fontSize: 12, color: _P.t3),
-                            textAlign: TextAlign.center),
+          return Column(children: [
+            // --- TABLE WRAPPER: MENANGGULANGI MASALAH TERPOTONG (SCROLLABLE) ---
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: DataTable(
+                horizontalMargin: 16,
+                columnSpacing: 24,
+                headingRowHeight: 44,
+                dataRowMinHeight: 48,
+                dataRowMaxHeight: 54,
+                headingRowColor: WidgetStateProperty.all(_P.surfaceAlt),
+                columns: const [
+                  DataColumn(label: Text('#', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _P.t2))),
+                  DataColumn(label: Text('PETUGAS / BARANG', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _P.t2))),
+                  DataColumn(label: Text('TOKO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _P.t2))),
+                  DataColumn(label: Text('PLAT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _P.t2))),
+                  DataColumn(label: Text('HARGA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _P.t2))),
+                ],
+                rows: List.generate(finalDisplayList.length, (i) {
+                  final item = finalDisplayList[i];
+                  return DataRow(
+                    cells: [
+                      // Kolom 1: Nomor Urut
+                      DataCell(
+                        Text('${i + 1}', style: const TextStyle(fontSize: 12, color: _P.t2)),
                       ),
-                      const SizedBox(width: 8),
-                      // Name + item
-                      Expanded(flex: 3, child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(item.namaPetugas,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _P.t1),
-                              overflow: TextOverflow.ellipsis),
-                          const SizedBox(height: 3),
-                          Row(children: [
-                            Flexible(child: Text(item.namaBarang,
-                                style: const TextStyle(fontSize: 12, color: _P.t2),
-                                overflow: TextOverflow.ellipsis)),
-                            const SizedBox(width: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: _P.indigoL,
-                                borderRadius: BorderRadius.circular(4),
+                      // Kolom 2: Info Komposit Petugas & Komponen Barang
+                      DataCell(
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(item.namaPetugas, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _P.t1)),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Text(item.namaBarang, style: const TextStyle(fontSize: 11, color: _P.t2)),
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    decoration: BoxDecoration(color: _P.indigoL, borderRadius: BorderRadius.circular(4)),
+                                    child: Text(item.kategoriBarang, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: _P.indigo)),
+                                  ),
+                                ],
                               ),
-                              child: Text(item.kategoriBarang,
-                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: _P.indigo)),
-                            ),
-                          ]),
-                        ],
-                      )),
-                      // Plat
-                      Expanded(flex: 2, child: Center(
-                        child: Container(
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Kolom 3: Nama Toko Pengadaan (BARU)
+                      DataCell(
+                        Row(
+                          children: [
+                            const Icon(Icons.store_rounded, size: 14, color: _P.t3),
+                            const SizedBox(width: 4),
+                            Text(item.namaToko, style: const TextStyle(fontSize: 12, color: _P.t1, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      ),
+                      // Kolom 4: Label Plat Kendaraan
+                      DataCell(
+                        Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                           decoration: BoxDecoration(
                             color: _P.tealL,
                             borderRadius: BorderRadius.circular(5),
-                            border: Border.all(color: _P.teal.withOpacity(0.3)),
+                            border: Border.all(color: _P.teal.withOpacity(0.2)),
                           ),
-                          child: Text(item.nopolMobil,
-                              style: const TextStyle(
-                                fontFamily: 'monospace', fontSize: 11,
-                                fontWeight: FontWeight.w700, color: _P.teal),
-                              textAlign: TextAlign.center),
+                          child: Text(
+                            item.nopolMobil,
+                            style: const TextStyle(fontFamily: 'monospace', fontSize: 11, fontWeight: FontWeight.w700, color: _P.teal),
+                          ),
                         ),
-                      )),
-                      // Price
-                      Expanded(flex: 2, child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(AppFormatters.rupiah(item.harga),
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _P.t1)),
-                          Text('qty ${item.qty}',
-                              style: const TextStyle(fontSize: 11, color: _P.t3)),
-                        ],
-                      )),
+                      ),
+                      // Kolom 5: Nilai Subtotal & Kuantitas Belanja
+                      DataCell(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(AppFormatters.rupiah(item.harga), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _P.t1)),
+                            Text('qty ${item.qty}', style: const TextStyle(fontSize: 10, color: _P.t3)),
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
-                ),
-                if (i < listData.length - 1)
-                  Divider(height: 1, color: _P.borderSoft, indent: 16, endIndent: 16),
-              ]);
-            }),
+                  );
+                }),
+              ),
+            ),
 
-            // Footer
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => ctx.push('/riwayat-boss'),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: _P.blue.withOpacity(0.25)),
-                      borderRadius: BorderRadius.circular(10),
-                      color: _P.blueL,
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Lihat semua pencatatan',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _P.blue)),
-                        SizedBox(width: 6),
-                        Icon(Icons.arrow_forward_rounded, color: _P.blue, size: 14),
-                      ],
-                    ),
-                  ),
+            // --- FOOTER BUTTON LINK KE MENU RIWAYAT UTAMA ---
+            const Divider(height: 1, color: _P.border),
+            InkWell(
+              onTap: () => ctx.push('/riwayat-boss'),
+              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(14), bottomRight: Radius.circular(14)),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: const BoxDecoration(
+                  color: _P.blueL,
+                  borderRadius: BorderRadius.only(bottomLeft: Radius.circular(14), bottomRight: Radius.circular(14)),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Lihat semua pencatatan', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _P.blue)),
+                    SizedBox(width: 6),
+                    Icon(Icons.arrow_forward_rounded, color: _P.blue, size: 14),
+                  ],
                 ),
               ),
             ),

@@ -25,7 +25,7 @@ class RiwayatNotifScreen extends ConsumerWidget {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text('Kotak Masuk', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.blueGrey[900],
+        backgroundColor:  const Color(0xFF1E3A5F),
         foregroundColor: Colors.white,
         elevation: 0,
         // --- FITUR BARU: TOMBOL AKSI TANDAI SEMUA DI APPBAR ---
