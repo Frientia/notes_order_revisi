@@ -41,7 +41,7 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
           'Rekap Hutang Toko',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.blueGrey[800],
+        backgroundColor: const Color(0xFF1E3A5F),
         foregroundColor: Colors.white,
         actions: [
           IconButton(

@@ -52,7 +52,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
             SliverAppBar(
               floating: true,
               pinned: true,
-              backgroundColor: Colors.blueGrey[900],
+              backgroundColor: const Color(0xFF1E3A5F),
               foregroundColor: Colors.white,
               expandedHeight: 140,
               title: const Text(

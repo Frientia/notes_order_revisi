@@ -28,6 +28,54 @@ class RiwayatNotifScreen extends ConsumerWidget {
         backgroundColor: Colors.blueGrey[900],
         foregroundColor: Colors.white,
         elevation: 0,
+        // --- FITUR BARU: TOMBOL AKSI TANDAI SEMUA DI APPBAR ---
+        actions: [
+          listNotifAsync.when(
+            data: (listData) {
+              if (listData.isEmpty) return const SizedBox();
+
+              // Ambal semua ID transaksi yang ada di list saat ini
+              final List<int> allCurrentIds = listData.map((d) => d['id_pencatatan'] as int).toList();
+
+              // Periksa apakah ada minimal satu notifikasi yang belum dibaca
+              final bool hasUnread = allCurrentIds.any((id) => !readNotifs.contains(id));
+
+              return TextButton.icon(
+                // Tombol aktif jika ada yang belum dibaca, jika sudah dibaca semua maka akan meredup (null)
+                onPressed: hasUnread
+                    ? () async {
+                        await ref.read(readNotificationsProvider.notifier).markAllAsRead(allCurrentIds);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Semua notifikasi telah ditandai dibaca'),
+                              behavior: SnackBarBehavior.floating,
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        }
+                      }
+                    : null,
+                icon: Icon(
+                  Icons.done_all_rounded,
+                  color: hasUnread ? Colors.white : Colors.white30,
+                  size: 18,
+                ),
+                label: Text(
+                  'Tandai Semua',
+                  style: TextStyle(
+                    color: hasUnread ? Colors.white : Colors.white30,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              );
+            },
+            loading: () => const SizedBox(),
+            error: (_, __) => const SizedBox(),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: listNotifAsync.when(
         data: (listData) {

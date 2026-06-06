@@ -30,4 +30,14 @@ class ReadNotificationsNotifier extends StateNotifier<List<int>> {
       await prefs.setStringList('read_notifs', newState.map((e) => e.toString()).toList());
     }
   }
+  // --- FITUR BARU: TANDAI SEMUA SUDAH DIBACA ---
+  Future<void> markAllAsRead(List<int> allIds) async {
+    // Gabungkan ID baru yang belum ada di state tanpa duplikat
+    final updatedState = Set<int>.from(state)..addAll(allIds);
+    state = updatedState.toList();
+
+    // Simpan permanen ke penyimpanan lokal HP
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('read_notifs', state.map((e) => e.toString()).toList());
+  }
 }

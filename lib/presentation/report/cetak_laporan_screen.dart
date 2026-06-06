@@ -37,7 +37,7 @@ class CetakLaporanScreen extends ConsumerWidget {
           'Pusat Pelaporan',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.blueGrey[800],
+        backgroundColor: const Color(0xFF1E3A5F),
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
