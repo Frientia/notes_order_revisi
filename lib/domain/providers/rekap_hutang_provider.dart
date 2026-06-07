@@ -1,7 +1,8 @@
+import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:notes_order/domain/providers/dashboard_boss_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// 1. Model Data Riwayat
 class RekapHutangModel {
   final int idToko;
   final String namaToko;
@@ -21,33 +22,34 @@ class _DetailHutangRaw {
   final String namaToko;
   final double subtotal;
   final DateTime tglPencatatan;
+  final String status;
 
   _DetailHutangRaw({
     required this.idToko,
     required this.namaToko,
     required this.subtotal,
     required this.tglPencatatan,
+    required this.status,
   });
 }
 
 enum SortirHutang { tertinggi, terendah, abjad }
 
 final searchHutangProvider = StateProvider<String>((ref) => '');
-final sortirHutangProvider = StateProvider<SortirHutang>(
-  (ref) => SortirHutang.tertinggi,
-);
-final bulanHutangProvider = StateProvider<DateTime?>((ref) => null);
+final sortirHutangProvider = StateProvider<SortirHutang>((ref) => SortirHutang.tertinggi);
 
-final rekapHutangRawProvider = FutureProvider.autoDispose<List<_DetailHutangRaw>>((
-  ref,
-) async {
+// --- PERBAIKAN 1: SET DEFAULT LANGSUNG KE BULAN BERJALAN SAAT INI (JUNI 2026) ---
+final bulanHutangProvider = StateProvider<DateTime?>((ref) {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, 1); // Otomatis mengunci ke bulan berjalan saat pertama buka
+});
+
+// Ambil semua data transaksi dari database
+final rekapHutangRawProvider = FutureProvider.autoDispose<List<_DetailHutangRaw>>((ref) async {
   final supabase = Supabase.instance.client;
   final response = await supabase
       .from('detail_pencatatan')
-      .select(
-        'qty, harga_pembelian_barang, id_toko, toko(nama_toko), pencatatan!inner(status_transaksi, tgl_pencatatan)',
-      )
-      .eq('status', 'PENDING')
+      .select('qty, harga_pembelian_barang, id_toko, status, toko(nama_toko), pencatatan!inner(status_transaksi, tgl_pencatatan)')
       .eq('pencatatan.status_transaksi', 'SELESAI');
 
   List<_DetailHutangRaw> listMentah = [];
@@ -63,73 +65,72 @@ final rekapHutangRawProvider = FutureProvider.autoDispose<List<_DetailHutangRaw>
         idToko: row['id_toko'] as int,
         namaToko: row['toko']?['nama_toko'] ?? 'Toko Tidak Diketahui',
         subtotal: qty * harga,
-        tglPencatatan: DateTime.parse(pencatatan!['tgl_pencatatan']),
+        tglPencatatan: DateTime.parse(pencatatan!['tgl_pencatatan']).toLocal(),
+        status: row['status'] ?? 'PENDING',
       ),
     );
   }
   return listMentah;
 });
 
-final rekapHutangFilteredProvider =
-    Provider.autoDispose<AsyncValue<List<RekapHutangModel>>>((ref) {
-      final rawState = ref.watch(rekapHutangRawProvider);
-      final query = ref.watch(searchHutangProvider).toLowerCase();
-      final sortir = ref.watch(sortirHutangProvider);
-      final filterBulan = ref.watch(bulanHutangProvider);
+// Memproses filter data untuk halaman utama rekap hutang
+final rekapHutangFilteredProvider = Provider.autoDispose<AsyncValue<List<RekapHutangModel>>>((ref) {
+  final rawState = ref.watch(rekapHutangRawProvider);
+  final query = ref.watch(searchHutangProvider).toLowerCase();
+  final sortir = ref.watch(sortirHutangProvider);
+  final filterBulan = ref.watch(bulanHutangProvider);
 
-      return rawState.whenData((rawList) {
-        Iterable<_DetailHutangRaw> dataTersaring = rawList;
-        if (filterBulan != null) {
-          dataTersaring = rawList.where(
-            (item) =>
-                item.tglPencatatan.year == filterBulan.year &&
-                item.tglPencatatan.month == filterBulan.month,
-          );
-        }
+  return rawState.whenData((rawList) {
+    Iterable<_DetailHutangRaw> dataTersaring = rawList;
+    if (filterBulan != null) {
+      dataTersaring = rawList.where(
+        (item) => item.tglPencatatan.year == filterBulan.year && item.tglPencatatan.month == filterBulan.month,
+      );
+    }
 
-        final Map<int, RekapHutangModel> rekapMap = {};
-        for (var item in dataTersaring) {
-          if (rekapMap.containsKey(item.idToko)) {
-            final existing = rekapMap[item.idToko]!;
-            rekapMap[item.idToko] = RekapHutangModel(
-              idToko: item.idToko,
-              namaToko: item.namaToko,
-              totalHutang: existing.totalHutang + item.subtotal,
-              jumlahItemPending: existing.jumlahItemPending + 1,
-            );
-          } else {
-            rekapMap[item.idToko] = RekapHutangModel(
-              idToko: item.idToko,
-              namaToko: item.namaToko,
-              totalHutang: item.subtotal,
-              jumlahItemPending: 1,
-            );
-          }
-        }
+    final Map<int, RekapHutangModel> rekapMap = {};
+    for (var item in dataTersaring) {
+      final double hutangDitambahkan = item.status == 'PENDING' ? item.subtotal : 0.0;
+      final int pendingDitambahkan = item.status == 'PENDING' ? 1 : 0;
 
-        List<RekapHutangModel> hasilAkhir = rekapMap.values.toList();
-        if (query.isNotEmpty) {
-          hasilAkhir = hasilAkhir
-              .where((toko) => toko.namaToko.toLowerCase().contains(query))
-              .toList();
-        }
+      if (rekapMap.containsKey(item.idToko)) {
+        final existing = rekapMap[item.idToko]!;
+        rekapMap[item.idToko] = RekapHutangModel(
+          idToko: item.idToko,
+          namaToko: item.namaToko,
+          totalHutang: existing.totalHutang + hutangDitambahkan,
+          jumlahItemPending: existing.jumlahItemPending + pendingDitambahkan,
+        );
+      } else {
+        rekapMap[item.idToko] = RekapHutangModel(
+          idToko: item.idToko,
+          namaToko: item.namaToko,
+          totalHutang: hutangDitambahkan,
+          jumlahItemPending: pendingDitambahkan,
+        );
+      }
+    }
 
-        switch (sortir) {
-          case SortirHutang.tertinggi:
-            hasilAkhir.sort((a, b) => b.totalHutang.compareTo(a.totalHutang));
-            break;
-          case SortirHutang.terendah:
-            hasilAkhir.sort((a, b) => a.totalHutang.compareTo(b.totalHutang));
-            break;
-          case SortirHutang.abjad:
-            hasilAkhir.sort((a, b) => a.namaToko.compareTo(b.namaToko));
-            break;
-        }
-        return hasilAkhir;
-      });
-    });
+    List<RekapHutangModel> hasilAkhir = rekapMap.values.toList();
+    if (query.isNotEmpty) {
+      hasilAkhir = hasilAkhir.where((toko) => toko.namaToko.toLowerCase().contains(query)).toList();
+    }
 
-// --- CLASS BARU UNTUK MENAMPUNG KELOMPOK NOTA ---
+    switch (sortir) {
+      case SortirHutang.tertinggi:
+        hasilAkhir.sort((a, b) => b.totalHutang.compareTo(a.totalHutang));
+        break;
+      case SortirHutang.terendah:
+        hasilAkhir.sort((a, b) => a.totalHutang.compareTo(b.totalHutang));
+        break;
+      case SortirHutang.abjad:
+        hasilAkhir.sort((a, b) => a.namaToko.compareTo(b.namaToko));
+        break;
+    }
+    return hasilAkhir;
+  });
+});
+
 class GrupNotaHutang {
   final int idNota;
   final DateTime tanggal;
@@ -146,89 +147,85 @@ class GrupNotaHutang {
   });
 }
 
-// --- UPDATE: MENGELOMPOKKAN BARANG BERDASARKAN ID NOTA ---
-final detailHutangTokoProvider = FutureProvider.autoDispose
-    .family<List<GrupNotaHutang>, int>((ref, idToko) async {
-      final supabase = Supabase.instance.client;
-
-      final response = await supabase
-          .from('detail_pencatatan')
-          .select(
-            'qty, harga_pembelian_barang, barang(nama_barang), pencatatan!inner(id_pencatatan, tgl_pencatatan)',
-          )
-          .eq('status', 'PENDING')
-          .eq('pencatatan.status_transaksi', 'SELESAI')
-          .eq('id_toko', idToko)
-          .order('id_detail_pencatatan', ascending: false);
-
-      // Map untuk mengelompokkan berdasarkan id_pencatatan (ID Nota)
-      final Map<int, GrupNotaHutang> groupedMap = {};
-
-      for (var row in response) {
-        final pencatatan = row['pencatatan'] as Map<String, dynamic>?;
-        if (pencatatan == null) continue;
-
-        final idNota = pencatatan['id_pencatatan'] as int? ?? 0;
-        final tglString = pencatatan['tgl_pencatatan'];
-        final tanggal = tglString != null
-            ? DateTime.parse(tglString)
-            : DateTime.now();
-
-        final qty = row['qty'] as int;
-        final harga = (row['harga_pembelian_barang'] as num).toDouble();
-        final subtotal = qty * harga;
-
-        final dataBarang = row['barang'] as Map<String, dynamic>?;
-        final namaBarang = dataBarang?['nama_barang'] ?? 'Barang Tanpa Nama';
-
-        // Bungkus rincian 1 barang
-        final rincianItem = {
-          'nama_barang': namaBarang,
-          'qty': qty,
-          'harga': harga,
-          'subtotal': subtotal,
-        };
-
-        if (groupedMap.containsKey(idNota)) {
-          // Jika Nota sudah ada, tambahkan barang ini ke dalamnya
-          final existingGroup = groupedMap[idNota]!;
-          existingGroup.rincianBarang.add(rincianItem);
-
-          groupedMap[idNota] = GrupNotaHutang(
-            idNota: idNota,
-            tanggal: existingGroup.tanggal,
-            totalHutangNota: existingGroup.totalHutangNota + subtotal,
-            jumlahMacamBarang: existingGroup.jumlahMacamBarang + 1,
-            rincianBarang: existingGroup.rincianBarang,
-          );
-        } else {
-          // Jika Nota baru muncul, buat grup baru
-          groupedMap[idNota] = GrupNotaHutang(
-            idNota: idNota,
-            tanggal: tanggal,
-            totalHutangNota: subtotal,
-            jumlahMacamBarang: 1,
-            rincianBarang: [rincianItem],
-          );
-        }
-      }
-
-      // Ubah ke List dan urutkan dari Nota terbaru
-      final listGroup = groupedMap.values.toList();
-      listGroup.sort((a, b) => b.idNota.compareTo(a.idNota));
-
-      return listGroup;
-    });
-
-// --- BARU: PROVIDER UNTUK MENGAMBIL GAMBAR KWITANSI ---
-final urlKwitansiProvider = FutureProvider.autoDispose.family<String?, int>((
-  ref,
-  idPencatatan,
-) async {
+// --- UPDATE: MENGELOMPOKKAN DENGAN MEMPERTAHANKAN HISTORI BARANG YANG SUDAH LUNAS (FIXED IDNOTA ERROR) ---
+final detailHutangTokoProvider = FutureProvider.autoDispose.family<List<GrupNotaHutang>, int>((ref, idToko) async {
   final supabase = Supabase.instance.client;
+  final filterBulan = ref.watch(bulanHutangProvider);
 
-  // Asumsi: id_kwitansi nilainya sama dengan id_pencatatan, atau ada relasi langsung.
-  // Jika kolom fk-nya berbeda (misal 'id_pencatatan' ada di tabel kwitansi), ganti 'id_kwitansi' dengan kolom tersebut.
+  final response = await supabase
+      .from('detail_pencatatan')
+      .select('id_detail_pencatatan, qty, harga_pembelian_barang, status, barang(nama_barang), pencatatan!inner(id_pencatatan, tgl_pencatatan)')
+      .eq('pencatatan.status_transaksi', 'SELESAI')
+      .eq('id_toko', idToko)
+      .order('id_detail_pencatatan', ascending: false);
+
+  final Map<int, GrupNotaHutang> groupedMap = {};
+
+  for (var row in response) {
+    final pencatatan = row['pencatatan'] as Map<String, dynamic>?;
+    if (pencatatan == null) continue;
+
+    // --- PERBAIKAN: Deklarasi idNota ditarik ke paling atas perulangan agar bisa dibaca di bawahnya ---
+    final int idNota = pencatatan['id_pencatatan'] as int? ?? 0;
+    final tglString = pencatatan['tgl_pencatatan'];
+    final tanggal = tglString != null ? DateTime.parse(tglString).toLocal() : DateTime.now();
+
+    // Saring nota sesuai bulan filter berjalan
+    if (filterBulan != null) {
+      if (tanggal.year != filterBulan.year || tanggal.month != filterBulan.month) {
+        continue; 
+      }
+    }
+
+    final qty = row['qty'] as int;
+    final harga = (row['harga_pembelian_barang'] as num).toDouble();
+    final subtotal = qty * harga;
+    final statusItem = row['status'] ?? 'PENDING';
+
+    final dataBarang = row['barang'] as Map<String, dynamic>?;
+    final namaBarang = dataBarang?['nama_barang'] ?? 'Barang Tanpa Nama';
+
+    final rincianItem = {
+      'id_detail_pencatatan': row['id_detail_pencatatan'] as int,
+      'nama_barang': namaBarang,
+      'qty': qty,
+      'harga': harga,
+      'subtotal': subtotal,
+      'status': statusItem,
+    };
+
+    final double hutangNotaDitambahkan = statusItem == 'PENDING' ? subtotal : 0.0;
+
+    if (groupedMap.containsKey(idNota)) {
+      final existingGroup = groupedMap[idNota]!;
+      existingGroup.rincianBarang.add(rincianItem);
+
+      groupedMap[idNota] = GrupNotaHutang(
+        idNota: idNota,
+        tanggal: existingGroup.tanggal,
+        totalHutangNota: existingGroup.totalHutangNota + hutangNotaDitambahkan,
+        jumlahMacamBarang: existingGroup.jumlahMacamBarang + 1,
+        rincianBarang: existingGroup.rincianBarang,
+      );
+    } else {
+      groupedMap[idNota] = GrupNotaHutang(
+        idNota: idNota,
+        tanggal: tanggal,
+        totalHutangNota: max(0.0, hutangNotaDitambahkan),
+        jumlahMacamBarang: 1,
+        rincianBarang: [rincianItem],
+      );
+    }
+  }
+
+  final listGroup = groupedMap.values.toList();
+  listGroup.sort((a, b) => b.idNota.compareTo(a.idNota));
+
+  return listGroup;
+});
+
+final urlKwitansiProvider = FutureProvider.autoDispose.family<String?, int>((ref, idPencatatan) async {
+  final supabase = Supabase.instance.client;
   final response = await supabase
       .from('kwitansi')
       .select('img_url')
@@ -238,8 +235,6 @@ final urlKwitansiProvider = FutureProvider.autoDispose.family<String?, int>((
   return response?['img_url'] as String?;
 });
 
-// --- FITUR BARU: PROVIDER UNTUK AKSI LUNASKAN SEMUA ---
-// --- FITUR LUNASKAN: COMPATIBLE UNTUK SEMUA VERSI SUPABASE ---
 final aksiHutangProvider = Provider((ref) => AksiHutang(ref));
 
 class AksiHutang {
@@ -249,17 +244,13 @@ class AksiHutang {
   Future<void> lunaskanSemuaBulanIni(int idToko, DateTime? filterBulan) async {
     final supabase = Supabase.instance.client;
 
-    // 1. Siapkan query select data pending
     final selectQuery = supabase
         .from('detail_pencatatan')
-        .select(
-          'id_detail_pencatatan, pencatatan!inner(tgl_pencatatan, status_transaksi)',
-        )
+        .select('id_detail_pencatatan, pencatatan!inner(tgl_pencatatan, status_transaksi)')
         .eq('id_toko', idToko)
         .eq('status', 'PENDING')
         .eq('pencatatan.status_transaksi', 'SELESAI');
 
-    // Eksekusi select dengan pengaman lintas versi SDK
     dynamic rawData;
     try {
       final legacyRes = await (selectQuery as dynamic).execute();
@@ -268,7 +259,6 @@ class AksiHutang {
       rawData = await selectQuery;
     }
 
-    // Standardisasi konversi data list
     List<dynamic> listData = [];
     if (rawData is List) {
       listData = rawData;
@@ -282,7 +272,7 @@ class AksiHutang {
       final tglString = item['pencatatan']['tgl_pencatatan'];
       if (tglString == null) continue;
 
-      final tgl = DateTime.parse(tglString.toString());
+      final tgl = DateTime.parse(tglString.toString()).toLocal();
 
       if (filterBulan != null) {
         if (tgl.year == filterBulan.year && tgl.month == filterBulan.month) {
@@ -297,28 +287,20 @@ class AksiHutang {
       throw 'Tidak ada data tagihan yang sesuai untuk dilunasi.';
     }
 
-    // 2. Eksekusi update status menjadi SELESAI satu per satu dengan safe-fallback
     for (final id in idsToUpdate) {
-      // 1. Buat dan simpan kuerinya di SINI (di luar blok try-catch)
       final updateQuery = supabase
           .from('detail_pencatatan')
-          .update({
-            'status': 'SELESAI',
-          }) // <-- Menggunakan SELESAI sesuai opsi 1
+          .update({'status': 'SELESAI'})
           .eq('id_detail_pencatatan', id);
 
-      // 2. Baru dieksekusi
       try {
-        await (updateQuery as dynamic)
-            .execute(); // Untuk SDK Supabase versi lama
+        await (updateQuery as dynamic).execute();
       } catch (_) {
-        await updateQuery; // Untuk SDK Supabase versi baru (Ini yang akan menghilangkan garis kuning unused variable)
+        await updateQuery;
       }
     }
 
-    // 3. Refresh state provider agar data di layar langsung diperbarui
     ref.invalidate(rekapHutangRawProvider);
     ref.invalidate(detailHutangTokoProvider(idToko));
-    ref.invalidate(dashboardRepositoryProvider);
   }
 }
