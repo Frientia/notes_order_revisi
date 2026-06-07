@@ -33,7 +33,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
   Widget build(BuildContext context) {
     final riwayatState = ref.watch(riwayatFilteredProvider);
     final filterWaktu = ref.watch(filterWaktuRiwayatProvider);
-    final customTanggal = ref.watch(filterTanggalCustomProvider);
 
     // Menghitung jumlah filter lanjutan yang aktif
     int activeAdvancedFilters = 0;
@@ -141,23 +140,42 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                             const Icon(Icons.calendar_month, size: 16),
                             const SizedBox(width: 4),
                             Text(
-                              customTanggal != null && filterWaktu == FilterWaktu.pilihTanggal
-                                  ? DateFormat('dd MMM yyyy').format(customTanggal)
-                                  : 'Pilih Tanggal',
+                              // Membaca state customTanggal (yang sekarang bertipe DateTimeRange)
+                              ref.watch(filterTanggalCustomProvider) != null &&
+                                      filterWaktu == FilterWaktu.pilihTanggal
+                                  ? '${DateFormat('dd MMM').format(ref.watch(filterTanggalCustomProvider)!.start)} - ${DateFormat('dd MMM yyyy').format(ref.watch(filterTanggalCustomProvider)!.end)}'
+                                  : 'Pilih Rentang Tanggal',
                             ),
                           ],
                         ),
                         selected: filterWaktu == FilterWaktu.pilihTanggal,
                         selectedColor: Colors.indigo.shade100,
                         onSelected: (_) async {
-                          final pickedDate = await showDatePicker(
+                          // Memunculkan Date Range Picker bawaan Flutter yang elegan
+                          final DateTimeRange? pickedRange = await showDateRangePicker(
                             context: context,
-                            initialDate: customTanggal ?? DateTime.now(),
+                            initialDateRange: ref.read(filterTanggalCustomProvider),
                             firstDate: DateTime(2020),
                             lastDate: DateTime.now(),
+                            saveText: 'PILIH',
+                            helpText: 'PILIH RENTANG TANGGAL',
+                            builder: (context, child) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: const ColorScheme.light(
+                                    primary: Color(0xFF1E3A5F), // Menyesuaikan warna tema bar Anda
+                                    onPrimary: Colors.white,
+                                    onSurface: Colors.black87,
+                                  ),
+                                ),
+                                child: child!,
+                              );
+                            },
                           );
-                          if (pickedDate != null) {
-                            ref.read(filterTanggalCustomProvider.notifier).state = pickedDate;
+                          
+                          if (pickedRange != null) {
+                            // Simpan range objek (start & end) ke provider kustom Anda
+                            ref.read(filterTanggalCustomProvider.notifier).state = pickedRange;
                             ref.read(filterWaktuRiwayatProvider.notifier).state = FilterWaktu.pilihTanggal;
                           }
                         },
