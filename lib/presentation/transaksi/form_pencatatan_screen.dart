@@ -56,56 +56,85 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   void _showImageSourceOptions(BuildContext context, int idDetail) {
     final existingKeys = _kwitansiBytesMap.keys.where((k) => k != idDetail).toList();
     final hasPreviousImage = existingKeys.isNotEmpty;
+    final primaryColor = Colors.teal.shade700;
 
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text('Upload Kwitansi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: Colors.blue),
-              title: const Text('Buka Kamera'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickImage(idDetail, ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: Colors.green),
-              title: const Text('Pilih dari Galeri'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickImage(idDetail, ImageSource.gallery);
-              },
-            ),
-            if (hasPreviousImage) ...[
-              const Divider(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Upload Kwitansi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                ),
+              ),
               ListTile(
-                leading: const Icon(Icons.file_copy_rounded, color: Colors.purple),
-                title: const Text('Gunakan Kwitansi Sebelumnya'),
-                subtitle: const Text('Menyalin referensi struk dari item di atas'),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle),
+                  child: Icon(Icons.camera_alt, color: Colors.blue.shade600),
+                ),
+                title: const Text('Buka Kamera', style: TextStyle(fontWeight: FontWeight.w500)),
                 onTap: () {
                   Navigator.pop(sheetContext);
-                  setState(() {
-                    final prevKey = existingKeys.last;
-                    _kwitansiBytesMap[idDetail] = _kwitansiBytesMap[prevKey]!;
-                    _kwitansiNameMap[idDetail] = _kwitansiNameMap[prevKey]!;
-                    _kwitansiRefMap[idDetail] = _kwitansiRefMap[prevKey]!; 
-                  });
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Referensi Kwitansi ditambahkan!'), backgroundColor: Colors.purple));
-                  }
+                  _pickImage(idDetail, ImageSource.camera);
                 },
               ),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
+                  child: Icon(Icons.photo_library, color: Colors.green.shade600),
+                ),
+                title: const Text('Pilih dari Galeri', style: TextStyle(fontWeight: FontWeight.w500)),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _pickImage(idDetail, ImageSource.gallery);
+                },
+              ),
+              if (hasPreviousImage) ...[
+                const Padding(padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8), child: Divider()),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: primaryColor.withAlpha(26), shape: BoxShape.circle),
+                    child: Icon(Icons.file_copy_rounded, color: primaryColor),
+                  ),
+                  title: const Text('Gunakan Kwitansi Sebelumnya', style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Menyalin referensi struk dari item di atas'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    setState(() {
+                      final prevKey = existingKeys.last;
+                      _kwitansiBytesMap[idDetail] = _kwitansiBytesMap[prevKey]!;
+                      _kwitansiNameMap[idDetail] = _kwitansiNameMap[prevKey]!;
+                      _kwitansiRefMap[idDetail] = _kwitansiRefMap[prevKey]!; 
+                    });
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Referensi Kwitansi ditambahkan!'), backgroundColor: primaryColor));
+                    }
+                  },
+                ),
+              ],
+              const SizedBox(height: 16),
             ],
-            const SizedBox(height: 8),
-          ],
+          ),
         ),
       ),
     );
@@ -159,7 +188,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
 
       if (!_kwitansiBytesMap.containsKey(idDetail)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal! Kwitansi untuk item "${item['barang']['nama_barang']}" belum diupload.'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Gagal! Kwitansi untuk item "${item['barang']['nama_barang']}" belum diupload.'), backgroundColor: Colors.red.shade600),
         );
         return; 
       }
@@ -221,6 +250,8 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     required Function(T?) onChanged,
     required VoidCallback onAddPressed,
   }) {
+    final primaryColor = Colors.teal.shade700;
+    
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -242,28 +273,27 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
               searchFieldProps: TextFieldProps(
                 decoration: InputDecoration(
                   hintText: 'Ketik untuk mencari...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
                 ),
               ),
               menuProps: const MenuProps(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                ),
+                elevation: 8,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
               ),
             ),
             decoratorProps: DropDownDecoratorProps(
               decoration: InputDecoration(
                 labelText: label,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
+                labelStyle: TextStyle(color: Colors.grey.shade700),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 1.5)),
                 filled: true,
-                fillColor: Colors.grey.shade50,
+                fillColor: Colors.grey.shade100,
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
@@ -273,18 +303,18 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
           ),
         ),
         const SizedBox(width: 12),
-        Container(
-          height: 52,
-          width: 52,
-          decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withAlpha(26),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Theme.of(context).primaryColor.withAlpha(77)),
-          ),
-          child: IconButton(
-            icon: Icon(Icons.add, color: Theme.of(context).primaryColor),
-            tooltip: 'Tambah Data Baru',
-            onPressed: onAddPressed,
+        InkWell(
+          onTap: onAddPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            height: 52,
+            width: 52,
+            decoration: BoxDecoration(
+              color: primaryColor.withAlpha(20),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: primaryColor.withAlpha(50)),
+            ),
+            child: Icon(Icons.add, color: primaryColor, size: 24),
           ),
         ),
       ],
@@ -294,10 +324,10 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   @override
   Widget build(BuildContext context) {
     final draftState = ref.watch(transaksiDraftProvider);
-    
     final barangList = ref.watch(barangControllerProvider).valueOrNull ?? [];
     final mobilList = ref.watch(mobilControllerProvider).valueOrNull ?? [];
     final tokoList = ref.watch(tokoControllerProvider).valueOrNull ?? [];
+    final primaryColor = Colors.teal.shade700;
 
     final filteredBarang = _selectedKategoriBarang == null 
         ? barangList 
@@ -308,31 +338,16 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
         : mobilList.where((m) => m.kategori == _selectedKategoriMobil).toList();
 
     if (draftState.isLoading || _isSubmitting) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(backgroundColor: Colors.grey.shade50, body: Center(child: CircularProgressIndicator(color: primaryColor)));
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100, // Background abu-abu muda agar Card lebih menonjol
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Form Pencatatan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            Text('Draft #${draftState.idPencatatan}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          ],
-        ),
-      ),
-      // MENGGUNAKAN BOTTOM NAVIGATION BAR UNTUK STICKY CHECKOUT
+      backgroundColor: Colors.grey.shade50,
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          boxShadow: [
-            BoxShadow(color: Colors.black.withAlpha(12), blurRadius: 10, offset: const Offset(0, -5)),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 20, offset: const Offset(0, -5))],
         ),
         child: SafeArea(
           child: Column(
@@ -344,44 +359,65 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                   const Text('Estimasi Grand Total', style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600)),
                   Text(
                     AppFormatters.rupiah(_hitungGrandTotal(draftState.items)),
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryColor),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
+              FilledButton(
+                style: FilledButton.styleFrom(
                   minimumSize: const Size(double.infinity, 54),
-                  backgroundColor: Theme.of(context).primaryColor,
+                  backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
                 ),
                 onPressed: draftState.items.isEmpty ? null : () => _eksekusiSelesai(draftState.idPencatatan!, draftState.items),
-                child: const Text('SIMPAN TRANSAKSI', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                child: const Text('SIMPAN TRANSAKSI', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
               ),
             ],
           ),
         ),
       ),
       body: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
+          SliverAppBar(
+            elevation: 0,
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+            pinned: true,
+            expandedHeight: 120,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+              title: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Form Pencatatan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                  Text('Draft #${draftState.idPencatatan}', style: TextStyle(fontSize: 12, color: Colors.teal.shade100, fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+          ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // --- FASE 1: FORM INPUT RENCANA ---
                   const Padding(
                     padding: EdgeInsets.only(bottom: 12, left: 4),
-                    child: Text('1. Rencana Belanja', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+                    child: Text('1. Rencana Belanja', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
                   ),
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 15, offset: const Offset(0, 8))],
                     ),
                     padding: const EdgeInsets.all(20),
                     child: Form(
@@ -393,7 +429,10 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                             value: _selectedKategoriBarang,
                             decoration: InputDecoration(
                               labelText: 'Filter Kategori Barang', 
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              labelStyle: TextStyle(color: Colors.grey.shade700),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              filled: true,
+                              fillColor: Colors.grey.shade100,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             ),
                             items: [
@@ -422,7 +461,10 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                             value: _selectedKategoriMobil,
                             decoration: InputDecoration(
                               labelText: 'Filter Kategori Mobil', 
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              labelStyle: TextStyle(color: Colors.grey.shade700),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              filled: true,
+                              fillColor: Colors.grey.shade100,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             ),
                             items: [
@@ -466,7 +508,10 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                   keyboardType: TextInputType.number,
                                   decoration: InputDecoration(
                                     labelText: 'Qty', 
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), 
+                                    labelStyle: TextStyle(color: Colors.grey.shade700),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade100,
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
                                   ),
                                   validator: (v) => v!.isEmpty ? 'Wajib' : null,
@@ -480,7 +525,10 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                   keyboardType: TextInputType.number,
                                   decoration: InputDecoration(
                                     labelText: 'Harga Estimasi (Rp)', 
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    labelStyle: TextStyle(color: Colors.grey.shade700),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade100,
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
                                   ),
                                 ),
@@ -489,11 +537,12 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                           ),
                           const SizedBox(height: 24),
                           
-                          OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(double.infinity, 50),
-                              side: BorderSide(color: Theme.of(context).primaryColor),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 52),
+                              backgroundColor: primaryColor,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                             onPressed: () {
                               if (_formItemKey.currentState!.validate() && _selectedBarang != null && _selectedMobil != null && _selectedToko != null) {
@@ -515,8 +564,8 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih Barang, Mobil, dan Toko!'), backgroundColor: Colors.orange));
                               }
                             },
-                            icon: const Icon(Icons.add_shopping_cart),
-                            label: const Text('Masukan Ke Daftar', style: TextStyle(fontWeight: FontWeight.bold)),
+                            icon: const Icon(Icons.add_shopping_cart, size: 20),
+                            label: const Text('Masukan Ke Daftar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                           )
                         ],
                       ),
@@ -524,10 +573,9 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // --- FASE 2: DAFTAR EKSEKUSI DI LAPANGAN ---
                   const Padding(
                     padding: EdgeInsets.only(bottom: 12, left: 4),
-                    child: Text('2. Realisasi Lapangan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+                    child: Text('2. Realisasi Lapangan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
                   ),
                   
                   if (draftState.items.isEmpty)
@@ -535,11 +583,15 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 40),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid),
                       ),
-                      child: const Center(
-                        child: Text('Daftar belanja masih kosong.', style: TextStyle(color: Colors.grey)),
+                      child: Column(
+                        children: [
+                          Icon(Icons.receipt_long_outlined, size: 48, color: Colors.grey.shade400),
+                          const SizedBox(height: 12),
+                          Text('Daftar belanja masih kosong', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                        ],
                       ),
                     ),
                 ],
@@ -547,7 +599,6 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
             ),
           ),
           
-          // DAFTAR ITEM MENGGUNAKAN SLIVER AGAR SCROLLING LEBIH OPTIMAL
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverList(
@@ -567,14 +618,11 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withAlpha(5), blurRadius: 8, offset: const Offset(0, 2)),
-                      ],
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 15, offset: const Offset(0, 8))],
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -584,39 +632,40 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                               Expanded(
                                 child: Text(
                                   '${item['barang']?['nama_barang']} (${item['barang']?['kategori'] ?? "-"})',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
                                 ),
                               ),
-                              GestureDetector(
+                              InkWell(
                                 onTap: () => ref.read(transaksiDraftProvider.notifier).hapusItemDariDraft(idDetail),
+                                borderRadius: BorderRadius.circular(8),
                                 child: Container(
-                                  padding: const EdgeInsets.all(6),
+                                  padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
-                                  child: Icon(Icons.delete_outline, color: Colors.red.shade400, size: 20),
+                                  child: Icon(Icons.delete_outline, color: Colors.red.shade600, size: 20),
                                 ),
                               )
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
                           Row(
                             children: [
-                              const Icon(Icons.directions_car, size: 14, color: Colors.grey),
+                              Icon(Icons.directions_car, size: 16, color: primaryColor),
                               const SizedBox(width: 6),
-                              Text('${item['mobil']?['no_plat']}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                              const SizedBox(width: 12),
-                              const Icon(Icons.store, size: 14, color: Colors.grey),
+                              Text('${item['mobil']?['no_plat']}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w500)),
+                              const SizedBox(width: 16),
+                              Icon(Icons.store, size: 16, color: primaryColor),
                               const SizedBox(width: 6),
-                              Text('${item['toko']?['nama_toko']}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                              Text('${item['toko']?['nama_toko']}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w500)),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(6)),
-                            child: Text('Qty: ${item['qty']} unit', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600, fontSize: 12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                            child: Text('Qty: ${item['qty']} unit', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 13)),
                           ),
                           const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
+                            padding: EdgeInsets.symmetric(vertical: 16),
                             child: Divider(height: 1, thickness: 1),
                           ),
                           
@@ -629,10 +678,11 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                   keyboardType: TextInputType.number,
                                   decoration: InputDecoration(
                                     labelText: 'Harga Riil (Rp)', 
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                    labelStyle: TextStyle(color: Colors.grey.shade700),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                     filled: true, 
-                                    fillColor: Colors.grey.shade50
+                                    fillColor: Colors.grey.shade100
                                   ),
                                   onChanged: (value) => setState(() {}), 
                                 ),
@@ -644,14 +694,15 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                   value: _statusPembayaranMap[idDetail],
                                   decoration: InputDecoration(
                                     labelText: 'Status', 
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                    labelStyle: TextStyle(color: Colors.grey.shade700),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                     filled: true, 
-                                    fillColor: Colors.grey.shade50
+                                    fillColor: Colors.grey.shade100
                                   ),
                                   items: const [
-                                    DropdownMenuItem(value: 'SELESAI', child: Text('CASH', style: TextStyle(fontSize: 13))),
-                                    DropdownMenuItem(value: 'PENDING', child: Text('HUTANG', style: TextStyle(fontSize: 13))),
+                                    DropdownMenuItem(value: 'SELESAI', child: Text('CASH', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold))),
+                                    DropdownMenuItem(value: 'PENDING', child: Text('HUTANG', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold))),
                                   ],
                                   onChanged: (v) => setState(() => _statusPembayaranMap[idDetail] = v!),
                                 ),
@@ -662,18 +713,28 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: _kwitansiBytesMap.containsKey(idDetail) ? Colors.green : Colors.black87,
-                                  side: BorderSide(color: _kwitansiBytesMap.containsKey(idDetail) ? Colors.green : Colors.grey.shade300),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: _kwitansiBytesMap.containsKey(idDetail) ? Colors.green.shade700 : primaryColor,
+                                    side: BorderSide(color: _kwitansiBytesMap.containsKey(idDetail) ? Colors.green.shade400 : primaryColor.withAlpha(100), width: 1.5),
+                                    backgroundColor: _kwitansiBytesMap.containsKey(idDetail) ? Colors.green.shade50 : Colors.transparent,
+                                    minimumSize: const Size(0, 48),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  onPressed: () => _showImageSourceOptions(context, idDetail),
+                                  icon: Icon(_kwitansiBytesMap.containsKey(idDetail) ? Icons.check_circle : Icons.camera_alt, size: 20),
+                                  label: Text(
+                                    _kwitansiBytesMap.containsKey(idDetail) ? 'Kwitansi Terunggah' : 'Upload Kwitansi',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
                                 ),
-                                onPressed: () => _showImageSourceOptions(context, idDetail),
-                                icon: Icon(_kwitansiBytesMap.containsKey(idDetail) ? Icons.check_circle : Icons.camera_alt, size: 18),
-                                label: Text(_kwitansiBytesMap.containsKey(idDetail) ? 'Kwitansi OK' : 'Foto/Upload Kwitansi'),
                               ),
                               if (!_kwitansiBytesMap.containsKey(idDetail))
-                                const Text('*Wajib', style: TextStyle(color: Colors.red, fontSize: 12, fontStyle: FontStyle.italic)),
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 12),
+                                  child: Text('*Wajib', style: TextStyle(color: Colors.red, fontSize: 12, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold)),
+                                ),
                             ],
                           )
                         ],
@@ -685,41 +746,59 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
               ),
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 40)), // Spacer bawah
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
       ),
     );
   }
 
-  // ================= MODAL SHORTCUTS (Tetap Utuh, Hanya UI Diperhalus) ================= //
-
   void _showAddBarangShortcut(BuildContext context) {
     final namaCtrl = TextEditingController();
     BarangKategori? shortcutSelectedKategori; 
+    final primaryColor = Colors.teal.shade700;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setStateModal) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Text('Tambah Barang Baru', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextFormField(controller: namaCtrl, decoration: InputDecoration(labelText: 'Nama Barang', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))), autofocus: true),
+              TextFormField(
+                controller: namaCtrl, 
+                decoration: InputDecoration(
+                  labelText: 'Nama Barang', 
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
+                ), 
+                autofocus: true
+              ),
               const SizedBox(height: 16),
               DropdownButtonFormField<BarangKategori>(
                 value: shortcutSelectedKategori,
-                decoration: InputDecoration(labelText: 'Kategori Barang', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
+                decoration: InputDecoration(
+                  labelText: 'Kategori Barang', 
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
+                ),
                 items: BarangKategori.values.map((k) => DropdownMenuItem(value: k, child: Text(k.label))).toList(),
                 onChanged: (v) => setStateModal(() => shortcutSelectedKategori = v),
               ),
             ],
           ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: Colors.grey))),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
             FilledButton(
-              style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              style: FilledButton.styleFrom(
+                backgroundColor: primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+              ),
               onPressed: () async {
                 if (namaCtrl.text.isNotEmpty && shortcutSelectedKategori != null) {
                   final newBarang = BarangModel(
@@ -730,7 +809,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                   if (ctx.mounted) Navigator.pop(ctx);
                 }
               },
-              child: const Text('Simpan'),
+              child: const Text('Simpan', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -742,31 +821,62 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     final platCtrl = TextEditingController();
     final tahunCtrl = TextEditingController();
     MobilKategori? selectedCat;
+    final primaryColor = Colors.teal.shade700;
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setStateModal) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Text('Tambah Mobil Baru', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextFormField(controller: platCtrl, textCapitalization: TextCapitalization.characters, decoration: InputDecoration(labelText: 'No Plat', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))), autofocus: true),
+              TextFormField(
+                controller: platCtrl, 
+                textCapitalization: TextCapitalization.characters, 
+                decoration: InputDecoration(
+                  labelText: 'No Plat', 
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
+                ), 
+                autofocus: true
+              ),
               const SizedBox(height: 16),
               DropdownButtonFormField<MobilKategori>(
                 value: selectedCat,
-                decoration: InputDecoration(labelText: 'Kategori', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
+                decoration: InputDecoration(
+                  labelText: 'Kategori', 
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
+                ),
                 items: MobilKategori.values.map((k) => DropdownMenuItem(value: k, child: Text(k.label))).toList(),
                 onChanged: (v) => setStateModal(() => selectedCat = v),
               ),
               const SizedBox(height: 16),
-              TextFormField(controller: tahunCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Tahun', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
+              TextFormField(
+                controller: tahunCtrl, 
+                keyboardType: TextInputType.number, 
+                decoration: InputDecoration(
+                  labelText: 'Tahun', 
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
+                )
+              ),
             ],
           ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: Colors.grey))),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
             FilledButton(
-              style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              style: FilledButton.styleFrom(
+                backgroundColor: primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+              ),
               onPressed: () async {
                 if (platCtrl.text.isNotEmpty && selectedCat != null && tahunCtrl.text.isNotEmpty) {
                   final newMobil = MobilModel(noPlat: platCtrl.text.trim().toUpperCase(), kategori: selectedCat, tahun: int.parse(tahunCtrl.text));
@@ -774,7 +884,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                   if (ctx.mounted) Navigator.pop(ctx);
                 }
               },
-              child: const Text('Simpan'),
+              child: const Text('Simpan', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -786,26 +896,60 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     final namaCtrl = TextEditingController();
     final telponCtrl = TextEditingController();
     final alamatCtrl = TextEditingController();
+    final primaryColor = Colors.teal.shade700;
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Tambah Toko Baru', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextFormField(controller: namaCtrl, textCapitalization: TextCapitalization.words, decoration: InputDecoration(labelText: 'Nama Toko', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))), autofocus: true),
+            TextFormField(
+              controller: namaCtrl, 
+              textCapitalization: TextCapitalization.words, 
+              decoration: InputDecoration(
+                labelText: 'Nama Toko', 
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
+              ), 
+              autofocus: true
+            ),
             const SizedBox(height: 16),
-            TextFormField(controller: telponCtrl, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: 'No Telp', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
+            TextFormField(
+              controller: telponCtrl, 
+              keyboardType: TextInputType.phone, 
+              decoration: InputDecoration(
+                labelText: 'No Telp', 
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
+              )
+            ),
             const SizedBox(height: 16),
-            TextFormField(controller: alamatCtrl, textCapitalization: TextCapitalization.words, decoration: InputDecoration(labelText: 'Alamat', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
+            TextFormField(
+              controller: alamatCtrl, 
+              textCapitalization: TextCapitalization.words, 
+              decoration: InputDecoration(
+                labelText: 'Alamat', 
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
+              )
+            ),
           ],
         ),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: Colors.grey))),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
           FilledButton(
-            style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            style: FilledButton.styleFrom(
+              backgroundColor: primaryColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            ),
             onPressed: () async {
               if (namaCtrl.text.isNotEmpty && telponCtrl.text.isNotEmpty && alamatCtrl.text.isNotEmpty) {
                 final newToko = TokoModel(
@@ -817,7 +961,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                 if (ctx.mounted) Navigator.pop(ctx);
               }
             },
-            child: const Text('Simpan'),
+            child: const Text('Simpan', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
