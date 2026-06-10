@@ -12,76 +12,144 @@ class MobilScreen extends ConsumerStatefulWidget {
 
 class _MobilScreenState extends ConsumerState<MobilScreen> {
   String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final mobilState = ref.watch(mobilControllerProvider);
+    final primaryColor = const Color(0xFF1E3A5F);
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(title: const Text('Kelola Data Mobil')),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          Expanded(
-            child: mobilState.when(
-              data: _buildMobilList,
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(child: Text('Error: $error')),
+      body: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverAppBar(
+            elevation: 0,
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+            pinned: true,
+            expandedHeight: 120,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
             ),
+            flexibleSpace: const FlexibleSpaceBar(
+              titlePadding: EdgeInsets.only(left: 48, bottom: 16),
+              title: Text(
+                'Master Data Mobil', 
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+              child: _buildSearchBar(primaryColor),
+            ),
+          ),
+          mobilState.when(
+            data: (listMobil) {
+              final filteredList = listMobil.where((mobil) {
+                final query = _searchQuery.toLowerCase();
+                final platMatch = mobil.noPlat.toLowerCase().contains(query);
+                final kategoriMatch = mobil.kategori?.label.toLowerCase().contains(query) ?? false;
+                return platMatch || kategoriMatch;
+              }).toList();
+
+              if (listMobil.isEmpty) {
+                return SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _buildEmptyState(Icons.directions_car_filled_outlined, 'Belum Ada Data', 'Data mobil Anda masih kosong. Silakan tambah mobil baru.'),
+                );
+              }
+
+              if (filteredList.isEmpty) {
+                return SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _buildEmptyState(Icons.search_off_rounded, 'Tidak Ditemukan', 'Mobil dengan kata kunci "$_searchQuery" tidak ada dalam sistem.'),
+                );
+              }
+
+              return SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _MobilListItem(mobil: filteredList[index]),
+                    childCount: filteredList.length,
+                  ),
+                ),
+              );
+            },
+            loading: () => SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: primaryColor))),
+            error: (error, stack) => SliverFillRemaining(child: Center(child: Text('Terjadi kesalahan: $error'))),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showFormBottomSheet(context),
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: primaryColor,
+        elevation: 4,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Tambah Mobil', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(Color primaryColor) {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 15, offset: const Offset(0, 8))],
+      ),
       child: TextField(
+        controller: _searchController,
         onChanged: (value) => setState(() => _searchQuery = value),
         decoration: InputDecoration(
           hintText: 'Cari plat mobil atau kategori...',
-          prefixIcon: const Icon(Icons.search, color: Colors.grey),
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          prefixIcon: Icon(Icons.search, color: primaryColor),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                )
+              : null,
           filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+          fillColor: Colors.white,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
     );
   }
 
-  Widget _buildMobilList(List<MobilModel> listMobil) {
-    final filteredList = listMobil.where((mobil) {
-      final query = _searchQuery.toLowerCase();
-      final platMatch = mobil.noPlat.toLowerCase().contains(query);
-      final kategoriMatch = mobil.kategori?.label.toLowerCase().contains(query) ?? false;
-      return platMatch || kategoriMatch;
-    }).toList();
-
-    if (listMobil.isEmpty) {
-      return const Center(child: Text('Belum ada data mobil.'));
-    }
-
-    if (filteredList.isEmpty) {
-      return const Center(child: Text('Mobil tidak ditemukan.'));
-    }
-
-    return ListView.builder(
-      itemCount: filteredList.length,
-      itemBuilder: (context, index) {
-        return _MobilListItem(mobil: filteredList[index]);
-      },
+  Widget _buildEmptyState(IconData icon, String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(color: const Color(0xFF1E3A5F).withAlpha(20), shape: BoxShape.circle),
+            child: Icon(icon, size: 64, color: const Color(0xFF1E3A5F).withAlpha(80)),
+          ),
+          const SizedBox(height: 24),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
+          const SizedBox(height: 8),
+          Text(subtitle, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+        ],
+      ),
     );
   }
 }
@@ -93,36 +161,69 @@ class _MobilListItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(color: Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(12),
+    final primaryColor = const Color(0xFF1E3A5F);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 10, offset: const Offset(0, 4))],
       ),
-      child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: Colors.blue,
-          child: Icon(Icons.directions_car, color: Colors.white),
-        ),
-        title: Text(
-          mobil.noPlat,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        subtitle: Text(
-          '${mobil.kategori?.label ?? 'Tanpa Kategori'} | Tahun: ${mobil.tahun ?? '-'}',
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.blue),
-              onPressed: () => _showFormBottomSheet(context, mobil: mobil),
+            Container(
+              height: 54,
+              width: 54,
+              decoration: BoxDecoration(color: primaryColor.withAlpha(20), borderRadius: BorderRadius.circular(12)),
+              alignment: Alignment.center,
+              child: Icon(Icons.directions_car, color: primaryColor, size: 28),
             ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _confirmDelete(context, ref, mobil),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(mobil.noPlat, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+                  const SizedBox(height: 4),
+                  Text(mobil.kategori?.label ?? 'Tanpa Kategori', style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                    child: Text(
+                      'Tahun: ${mobil.tahun ?? '-'}',
+                      style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            Column(
+              children: [
+                InkWell(
+                  onTap: () => _showFormBottomSheet(context, mobil: mobil),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                    child: Icon(Icons.edit_rounded, color: Colors.blue.shade600, size: 20),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () => _confirmDelete(context, ref, mobil),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                    child: Icon(Icons.delete_outline_rounded, color: Colors.red.shade600, size: 20),
+                  ),
+                ),
+              ],
+            )
           ],
         ),
       ),
@@ -133,19 +234,23 @@ class _MobilListItem extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hapus Mobil'),
-        content: Text('Yakin ingin menghapus mobil dengan plat ${mobil.noPlat}?'),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Hapus Mobil', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Yakin ingin menghapus mobil dengan plat "${mobil.noPlat}"? Tindakan ini tidak dapat dibatalkan.'),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
           ),
-          TextButton(
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () {
               ref.read(mobilControllerProvider.notifier).deleteMobil(mobil.idMobil!);
               Navigator.pop(ctx);
             },
-            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+            child: const Text('Hapus', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -157,6 +262,7 @@ void _showFormBottomSheet(BuildContext context, {MobilModel? mobil}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    backgroundColor: Colors.transparent,
     builder: (ctx) => _MobilFormSheet(mobil: mobil),
   );
 }
@@ -227,40 +333,54 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.mobil != null;
+    final primaryColor = const Color(0xFF1E3A5F);
 
-    return Padding(
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 16,
-        right: 16,
-        top: 24,
+        left: 24,
+        right: 24,
+        top: 12,
       ),
       child: Form(
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              isEdit ? 'Edit Mobil' : 'Tambah Mobil Baru',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Center(
+              child: Container(
+                width: 48,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
+              ),
             ),
-            const SizedBox(height: 16),
+            Text(
+              isEdit ? 'Edit Data Mobil' : 'Tambah Mobil Baru',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+            ),
+            const SizedBox(height: 24),
             _buildTextField(
               controller: _platCtrl,
               label: 'No. Plat (Contoh: B 1234 CD)',
               textCapitalization: TextCapitalization.characters,
               validator: (val) => val!.isEmpty ? 'No. Plat wajib diisi' : null,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             _buildDropdown(),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             _buildTextField(
               controller: _tahunCtrl,
               label: 'Tahun Kendaraan',
               keyboardType: TextInputType.number,
             ),
-            const SizedBox(height: 24),
-            _buildSubmitButton(isEdit),
+            const SizedBox(height: 32),
+            _buildSubmitButton(isEdit, primaryColor),
             const SizedBox(height: 24),
           ],
         ),
@@ -281,7 +401,11 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
       textCapitalization: textCapitalization,
       decoration: InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
+        labelStyle: TextStyle(color: Colors.grey.shade600),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
       validator: validator,
     );
@@ -290,15 +414,16 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
   Widget _buildDropdown() {
     return DropdownButtonFormField<MobilKategori>(
       value: _selectedKategori,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Kategori',
-        border: OutlineInputBorder(),
+        labelStyle: TextStyle(color: Colors.grey.shade600),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
       items: MobilKategori.values.map((kategori) {
-        return DropdownMenuItem(
-          value: kategori,
-          child: Text(kategori.label),
-        );
+        return DropdownMenuItem(value: kategori, child: Text(kategori.label));
       }).toList(),
       onChanged: (newValue) {
         setState(() => _selectedKategori = newValue);
@@ -307,23 +432,24 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
     );
   }
 
-  Widget _buildSubmitButton(bool isEdit) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        minimumSize: const Size.fromHeight(50),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        backgroundColor: Colors.blue,
+  Widget _buildSubmitButton(bool isEdit, Color primaryColor) {
+    return FilledButton(
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(54),
+        backgroundColor: primaryColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        elevation: 0,
       ),
       onPressed: _isSubmitting ? null : _submitForm,
       child: _isSubmitting
           ? const SizedBox(
-              height: 20,
-              width: 20,
+              height: 24,
+              width: 24,
               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
             )
           : Text(
               isEdit ? 'Simpan Perubahan' : 'Simpan Mobil',
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
             ),
     );
   }

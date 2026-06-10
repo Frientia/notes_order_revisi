@@ -56,7 +56,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   void _showImageSourceOptions(BuildContext context, int idDetail) {
     final existingKeys = _kwitansiBytesMap.keys.where((k) => k != idDetail).toList();
     final hasPreviousImage = existingKeys.isNotEmpty;
-    final primaryColor = Colors.teal.shade700;
+    final primaryColor = const Color(0xFF1E3A5F);
 
     showModalBottomSheet(
       context: context,
@@ -250,7 +250,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     required Function(T?) onChanged,
     required VoidCallback onAddPressed,
   }) {
-    final primaryColor = Colors.teal.shade700;
+    final primaryColor = const Color(0xFF1E3A5F);
     
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,7 +327,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     final barangList = ref.watch(barangControllerProvider).valueOrNull ?? [];
     final mobilList = ref.watch(mobilControllerProvider).valueOrNull ?? [];
     final tokoList = ref.watch(tokoControllerProvider).valueOrNull ?? [];
-    final primaryColor = Colors.teal.shade700;
+    final primaryColor = const Color(0xFF1E3A5F);
 
     final filteredBarang = _selectedKategoriBarang == null 
         ? barangList 
@@ -392,13 +392,13 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
             ),
             flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+              titlePadding: const EdgeInsets.only(left: 56, bottom: 16),
               title: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Form Pencatatan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
-                  Text('Draft #${draftState.idPencatatan}', style: TextStyle(fontSize: 12, color: Colors.teal.shade100, fontWeight: FontWeight.w500)),
+                  Text('Draft #${draftState.idPencatatan}', style: TextStyle(fontSize: 12, color: const Color(0xFF1E3A5F).withAlpha(40), fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
@@ -755,7 +755,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   void _showAddBarangShortcut(BuildContext context) {
     final namaCtrl = TextEditingController();
     BarangKategori? shortcutSelectedKategori; 
-    final primaryColor = Colors.teal.shade700;
+    final primaryColor = const Color(0xFF1E3A5F);
 
     showDialog(
       context: context,
@@ -821,7 +821,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     final platCtrl = TextEditingController();
     final tahunCtrl = TextEditingController();
     MobilKategori? selectedCat;
-    final primaryColor = Colors.teal.shade700;
+    final primaryColor = const Color(0xFF1E3A5F);
 
     showDialog(
       context: context,
@@ -896,7 +896,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     final namaCtrl = TextEditingController();
     final telponCtrl = TextEditingController();
     final alamatCtrl = TextEditingController();
-    final primaryColor = Colors.teal.shade700;
+    final primaryColor = const Color(0xFF1E3A5F);
 
     showDialog(
       context: context,

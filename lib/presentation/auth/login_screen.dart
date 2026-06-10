@@ -208,7 +208,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextButton(
                       onPressed: () => context.push('/register'),
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey.shade700,
+                        foregroundColor: Colors.grey,
                       ),
                       child: RichText(
                         text: const TextSpan(

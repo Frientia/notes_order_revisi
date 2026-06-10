@@ -186,7 +186,7 @@ class CetakLaporanScreen extends ConsumerWidget {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.filter_alt, color: Colors.teal, size: 20),
+                        Icon(Icons.filter_alt, color: const Color(0xFF1E3A5F), size: 20),
                         SizedBox(width: 8),
                         Text(
                           'Saringan Data Spesifik',

@@ -13,7 +13,7 @@ class PetugasDashboard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final draftState = ref.watch(transaksiDraftProvider);
     final barangState = ref.watch(barangControllerProvider);
-    final primaryColor = Colors.teal.shade700;
+    final primaryColor = const Color(0xFF1E3A5F);
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -26,89 +26,111 @@ class PetugasDashboard extends ConsumerWidget {
       ),
       drawer: Drawer(
         backgroundColor: Colors.white,
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.teal.shade50,
-                  border: Border(bottom: BorderSide(color: Colors.teal.shade100, width: 1)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                      radius: 36,
-                      backgroundColor: primaryColor,
-                      child: const Icon(Icons.person, size: 40, color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('Petugas Logistik', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(8)),
-                      child: const Text('Status: Aktif', style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 24, 
+                left: 24, 
+                right: 24, 
+                bottom: 24
               ),
-              const SizedBox(height: 16),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text('MENU UTAMA', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2)),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E3A5F),
               ),
-              _buildDrawerItem(context, Icons.add_shopping_cart, 'Catat Pembelian', '/pencatatan', primaryColor),
-              _buildDrawerItem(context, Icons.history, 'Riwayat Transaksi', '/riwayat', Colors.black87),
-              const SizedBox(height: 16),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text('MASTER DATA', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2)),
-              ),
-              _buildDrawerItem(context, Icons.inventory_2_outlined, 'Data Barang', '/barang', Colors.orange.shade700),
-              _buildDrawerItem(context, Icons.store_outlined, 'Data Toko', '/toko', Colors.orange.shade700),
-              _buildDrawerItem(context, Icons.car_repair, 'Data Mobil', '/mobil', Colors.orange.shade700),
-              const Spacer(),
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: BorderSide(color: Colors.red.shade200),
-                    minimumSize: const Size(double.infinity, 48),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundColor: Colors.white, // Kontras dengan background Navy
+                    child: const Icon(Icons.person, size: 36, color: Color(0xFF1E3A5F)),
                   ),
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Keluar Akun', style: TextStyle(fontWeight: FontWeight.bold)),
-                  onPressed: () async {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        title: const Text('Konfirmasi Logout'),
-                        content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-                          FilledButton(
-                            style: FilledButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                            onPressed: () async {
-                              Navigator.pop(ctx);
-                              await ref.read(authRepositoryProvider).logout();
-                            },
-                            child: const Text('Keluar'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                  const SizedBox(height: 16),
+                  const Text('Petugas Logistik', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(50),
+                      borderRadius: BorderRadius.circular(8)
+                    ),
+                    child: const Text('Status: Aktif', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  const SizedBox(height: 16),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    child: Text('MENU UTAMA', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2)),
+                  ),
+                  _buildDrawerItem(context, Icons.add_shopping_cart, 'Catat Pembelian', '/pencatatan', const Color(0xFF1E3A5F)),
+                  _buildDrawerItem(context, Icons.history, 'Riwayat Transaksi', '/riwayat', Colors.black87),
+                  
+                  const Padding(
+                    padding: EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 8),
+                    child: Text('MASTER DATA', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2)),
+                  ),
+                  _buildDrawerItem(context, Icons.inventory_2_outlined, 'Data Barang', '/barang', Colors.orange.shade700),
+                  _buildDrawerItem(context, Icons.storefront_outlined, 'Data Toko', '/toko', Colors.green.shade600),
+                  _buildDrawerItem(context, Icons.directions_car_outlined, 'Data Mobil', '/mobil', Colors.blue.shade600),
+                ],
+              ),
+            ),
+
+            const Divider(height: 1, thickness: 1),
+            Padding(
+              padding: EdgeInsets.only(
+                left: 16, 
+                right: 16, 
+                top: 16, 
+                bottom: MediaQuery.of(context).padding.bottom + 16
+              ),
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red.shade700,
+                  side: BorderSide(color: Colors.red.shade200),
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.logout),
+                label: const Text('Keluar Akun', style: TextStyle(fontWeight: FontWeight.bold)),
+                onPressed: () async {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      title: const Text('Konfirmasi Logout'),
+                      content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.red.shade700, 
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
+                          ),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await ref.read(authRepositoryProvider).logout();
+                          },
+                          child: const Text('Keluar'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
       body: RefreshIndicator(
@@ -134,7 +156,7 @@ class PetugasDashboard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Selamat Datang,', style: TextStyle(fontSize: 16, color: Colors.teal.shade100)),
+                    Text('Selamat Datang,', style: TextStyle(fontSize: 16, color: const Color(0xFF1E3A5F).withAlpha(40))),
                     const SizedBox(height: 4),
                     const Text('Petugas Lapangan', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
                   ],
