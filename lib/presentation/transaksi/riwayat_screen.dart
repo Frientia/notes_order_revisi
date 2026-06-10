@@ -61,7 +61,7 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5), 
       appBar: AppBar(
-        backgroundColor: const Color(0xFF25313A), 
+        backgroundColor: Colors.teal.shade700, 
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text('Riwayat Transaksi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
@@ -98,7 +98,7 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
         children: [
           // 1. BAGIAN HEADER (SEARCH BAR VISUAL AKTIF)
           Container(
-            color: const Color(0xFF25313A),
+            color: Colors.teal.shade700,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: TextField(
               controller: _searchCtrl,
