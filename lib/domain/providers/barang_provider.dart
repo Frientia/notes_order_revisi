@@ -19,34 +19,28 @@ class BarangController extends StateNotifier<AsyncValue<List<BarangModel>>> {
     state = await AsyncValue.guard(() => _repository.getBarang());
   }
 
-  Future<void> addBarang(BarangModel barang) async {
+  Future<void> addBarang(BarangModel barang, {List<int> listIdMobilCocok = const []}) async {
     try {
-      final newItem = await _repository.addBarang(barang);
-      if (state.hasValue) {
-        state = AsyncValue.data([...state.value!, newItem]);
-      }
+      await _repository.addBarang(barang, listIdMobilCocok: listIdMobilCocok);
+      await fetchBarang();
     } catch (e) {
-      throw Exception(e.toString());
+      throw Exception(e.toString().replaceAll('Exception: ', '')); 
     }
   }
 
-  Future<void> updateBarang(BarangModel barang) async {
+  Future<void> updateBarang(BarangModel barang, {List<int>? listIdMobilCocok}) async {
     try {
-      await _repository.updateBarang(barang);
-      if (state.hasValue) {
-        state = AsyncValue.data(
-          state.value!.map((e) => e.idBarang == barang.idBarang ? barang : e).toList(),
-        );
-      }
+      await _repository.updateBarang(barang, listIdMobilCocok: listIdMobilCocok);
+      await fetchBarang();
     } catch (e) {
-      throw Exception('Gagal mengupdate barang: $e');
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
-  // Parameter disinkronkan menggunakan String
-  Future<void> deleteBarang(String idBarang) async {
+  Future<void> deleteBarang(int idBarang) async {
     try {
       await _repository.deleteBarang(idBarang);
+      
       if (state.hasValue) {
         state = AsyncValue.data(
           state.value!.where((e) => e.idBarang != idBarang).toList(),
