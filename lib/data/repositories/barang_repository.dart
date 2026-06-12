@@ -12,38 +12,94 @@ class BarangRepository {
   BarangRepository(this._supabase);
 
   Future<List<BarangModel>> getBarang() async {
-    final response = await _supabase
-        .from('barang')
-        .select()
-        .order('nama_barang', ascending: true);
-    
-    return response.map((e) => BarangModel.fromJson(e)).toList();
+    try {
+      final response = await _supabase
+          .from('barang')
+          .select('*, kategori_barang(*)')
+          .order('nama_barang', ascending: true);
+      
+      return response.map((e) => BarangModel.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Gagal memuat master barang: $e');
+    }
   }
 
-  Future<BarangModel> addBarang(BarangModel barang) async {
-    final cekBarang = await _supabase.from('barang').select().eq('nama_barang', barang.namaBarang);
-    if (cekBarang.isNotEmpty) throw Exception('Nama Barang sudah terdaftar!');
-
-    final response = await _supabase
-        .from('barang')
-        .insert(barang.toJson())
-        .select()
-        .single();
-    return BarangModel.fromJson(response);
+  Future<List<BarangModel>> getBarangSesuaiMobil(int idMobil) async {
+    try {
+      final response = await _supabase
+          .from('barang')
+          .select('*, kategori_barang(*), barang_mobil!inner(*)') 
+          .eq('barang_mobil.id_mobil', idMobil)
+          .order('nama_barang', ascending: true);
+          
+      return response.map((e) => BarangModel.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Gagal memfilter barang: $e');
+    }
   }
 
-  Future<void> updateBarang(BarangModel barang) async {
-    await _supabase
-        .from('barang')
-        .update(barang.toJson())
-        .eq('id_barang', int.parse(barang.idBarang!));
+  Future<BarangModel> addBarang(BarangModel barang, {List<int> listIdMobilCocok = const []}) async {
+    try {
+      final response = await _supabase
+          .from('barang')
+          .insert(barang.toJson())
+          .select()
+          .single();
+          
+      final newBarang = BarangModel.fromJson(response);
+
+      if (listIdMobilCocok.isNotEmpty && newBarang.idBarang != null) {
+        final List<Map<String, dynamic>> relasiData = listIdMobilCocok.map((idMobil) => {
+          'id_barang': newBarang.idBarang,
+          'id_mobil': idMobil,
+        }).toList();
+        
+        await _supabase.from('barang_mobil').insert(relasiData);
+      }
+      
+      return newBarang;
+    } catch (e) {
+      if (e.toString().contains('23505') || e.toString().contains('duplicate key')) {
+        throw Exception('Nama Barang sudah terdaftar! Gunakan nama lain.');
+      }
+      throw Exception('Gagal menambah barang: $e');
+    }
   }
 
-  // Parameter disinkronkan menggunakan String
-  Future<void> deleteBarang(String idBarang) async {
-    await _supabase
-        .from('barang')
-        .delete()
-        .eq('id_barang', int.parse(idBarang));
+  Future<void> updateBarang(BarangModel barang, {List<int>? listIdMobilCocok}) async {
+    try {
+      await _supabase
+          .from('barang')
+          .update(barang.toJson())
+          .eq('id_barang', barang.idBarang!);
+          
+      if (listIdMobilCocok != null) {
+        await _supabase.from('barang_mobil').delete().eq('id_barang', barang.idBarang!);
+        
+        if (listIdMobilCocok.isNotEmpty) {
+           final List<Map<String, dynamic>> relasiData = listIdMobilCocok.map((idMobil) => {
+            'id_barang': barang.idBarang,
+            'id_mobil': idMobil,
+          }).toList();
+          await _supabase.from('barang_mobil').insert(relasiData);
+        }
+      }
+    } catch (e) {
+       if (e.toString().contains('23505')) {
+         throw Exception('Nama Barang ini sudah dipakai oleh barang lain!');
+       }
+       throw Exception('Gagal mengupdate barang: $e');
+    }
+  }
+
+  Future<void> deleteBarang(int idBarang) async {
+    try {
+      await _supabase
+          .from('barang')
+          .delete()
+          .eq('id_barang', idBarang);
+    } catch (e) {
+      throw Exception('Gagal menghapus barang: $e');
+    }
   }
 }
