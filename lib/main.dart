@@ -37,8 +37,8 @@ void main() async {
 
   try {
     await Supabase.initialize(
-      url: 'https://xgfrgggaslqgmpixogxb.supabase.co/',
-      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhnZnJnZ2dhc2xxZ21waXhvZ3hiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzkwMDgsImV4cCI6MjA5NTAxNTAwOH0.jO9_IZuh8bipQ58NENIoZm_noss4uCnUXOjBRnGD730', // GANTI DENGAN KEY ASLI ANDA
+      url: 'https://izgeendggvfkrpmnqmqk.supabase.co/',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6Z2VlbmRnZ3Zma3JwbW5xbXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjY5ODMsImV4cCI6MjA5Njg0Mjk4M30.3xm7O9KUWyjzkaF0ri8SeGfkQEPRiXCaGaAsjJooSwU', // GANTI DENGAN KEY ASLI ANDA
     );
     print("Supabase berhasil diinisialisasi");
   } catch (e) {
