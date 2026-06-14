@@ -1,11 +1,13 @@
-import 'kategori_model.dart'; // Pastikan mengimpor KategoriModel yang baru saja kita buat
+import 'package:notes_order/data/models/kategori_model.dart';
+import 'package:notes_order/data/models/mobil_model.dart';
 
 class BarangModel {
   final int? idBarang;
   final String namaBarang;
   final int? idKategori; 
-  final KategoriModel? kategori; // Menampung objek kategori utuh hasil JOIN Supabase
+  final KategoriModel? kategori;
   final int stock;
+  final List<MobilModel>? kecocokanMobil;
 
   BarangModel({
     this.idBarang,
@@ -13,6 +15,7 @@ class BarangModel {
     this.idKategori,
     this.kategori,
     this.stock = 0,
+    this.kecocokanMobil,
   });
 
   factory BarangModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +29,10 @@ class BarangModel {
           : null,
           
       stock: json['stock'] != null ? int.tryParse(json['stock'].toString()) ?? 0 : 0,
+
+      kecocokanMobil: json['mobil'] != null 
+          ? (json['mobil'] as List).map((e) => MobilModel.fromJson(e)).toList() 
+          : [],
     );
   }
 
@@ -44,6 +51,7 @@ class BarangModel {
     int? idKategori,
     KategoriModel? kategori,
     int? stock,
+    List<MobilModel>? kecocokanMobil,
   }) {
     return BarangModel(
       idBarang: idBarang ?? this.idBarang,
@@ -51,6 +59,7 @@ class BarangModel {
       idKategori: idKategori ?? this.idKategori,
       kategori: kategori ?? this.kategori,
       stock: stock ?? this.stock,
+      kecocokanMobil: kecocokanMobil ?? this.kecocokanMobil,
     );
   }
 }

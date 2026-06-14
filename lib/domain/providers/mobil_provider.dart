@@ -22,34 +22,26 @@ class MobilController extends StateNotifier<AsyncValue<List<MobilModel>>> {
 
   Future<void> addMobil(MobilModel mobil) async {
     try {
-      final newItem = await _repository.addMobil(mobil);
-      if (state.hasValue) {
-        state = AsyncValue.data([...state.value!, newItem]);
-      }
+      await _repository.addMobil(mobil);
+      await fetchMobil();
     } catch (e) {
-      throw Exception(e.toString());
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
   Future<void> updateMobil(MobilModel mobil) async {
     try {
       await _repository.updateMobil(mobil);
-      if (state.hasValue) {
-        state = AsyncValue.data(
-          state.value!
-              .map((e) => e.idMobil == mobil.idMobil ? mobil : e)
-              .toList(),
-        );
-      }
+      await fetchMobil();
     } catch (e) {
-      throw Exception('Gagal mengupdate mobil: $e');
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
-  // UBAH: Parameter menjadi String
-  Future<void> deleteMobil(String idMobil) async {
+  Future<void> deleteMobil(int idMobil) async {
     try {
       await _repository.deleteMobil(idMobil);
+      
       if (state.hasValue) {
         state = AsyncValue.data(
           state.value!.where((e) => e.idMobil != idMobil).toList(),

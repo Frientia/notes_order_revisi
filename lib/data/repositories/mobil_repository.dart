@@ -12,38 +12,57 @@ class MobilRepository {
   MobilRepository(this._supabase);
 
   Future<List<MobilModel>> getMobil() async {
-    final response = await _supabase
-        .from('mobil')
-        .select()
-        .order('no_plat', ascending: true);
+    try {
+      final response = await _supabase
+          .from('mobil')
+          .select('*, kategori_mobil(*)')
+          .order('no_plat', ascending: true);
 
-    return response.map((e) => MobilModel.fromJson(e)).toList();
+      return response.map((e) => MobilModel.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Gagal memuat master mobil: $e');
+    }
   }
 
   Future<MobilModel> addMobil(MobilModel mobil) async {
-    final cekPlat = await _supabase
-        .from('mobil')
-        .select()
-        .eq('no_plat', mobil.noPlat);
-    if (cekPlat.isNotEmpty) throw Exception('Nomor Plat sudah terdaftar!');
-
-    final response = await _supabase
-        .from('mobil')
-        .insert(mobil.toJson())
-        .select()
-        .single();
-    return MobilModel.fromJson(response);
+    try {
+      final response = await _supabase
+          .from('mobil')
+          .insert(mobil.toJson())
+          .select()
+          .single();
+          
+      return MobilModel.fromJson(response);
+    } catch (e) {
+      if (e.toString().contains('23505') || e.toString().contains('duplicate key')) {
+        throw Exception('Nomor Plat sudah terdaftar! Gunakan plat lain.');
+      }
+      throw Exception('Gagal menambah mobil: $e');
+    }
   }
 
   Future<void> updateMobil(MobilModel mobil) async {
-    await _supabase
-        .from('mobil')
-        .update(mobil.toJson())
-        .eq('id_mobil', int.parse(mobil.idMobil!)); // UBAH: Parse ke int untuk Supabase
+    try {
+      await _supabase
+          .from('mobil')
+          .update(mobil.toJson())
+          .eq('id_mobil', mobil.idMobil!);
+    } catch (e) {
+      if (e.toString().contains('23505')) {
+        throw Exception('Nomor Plat ini sudah dipakai oleh mobil lain!');
+      }
+      throw Exception('Gagal mengupdate mobil: $e');
+    }
   }
 
-  // UBAH: Parameter menjadi String
-  Future<void> deleteMobil(String idMobil) async {
-    await _supabase.from('mobil').delete().eq('id_mobil', int.parse(idMobil)); // UBAH: Parse ke int
+  Future<void> deleteMobil(int idMobil) async {
+    try {
+      await _supabase
+          .from('mobil')
+          .delete()
+          .eq('id_mobil', idMobil);
+    } catch (e) {
+      throw Exception('Gagal menghapus mobil: $e');
+    }
   }
 }

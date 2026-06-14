@@ -1,50 +1,56 @@
-enum MobilKategori {
-  trailer('Trailer'),
-  gandengan('Gandengan'),
-  tronton('Tronton'),
-  engkel('Engkel'),
-  lt('LT');
-
-  final String label;
-  const MobilKategori(this.label);
-
-  static MobilKategori? fromString(String? text) {
-    if (text == null) return null;
-    return MobilKategori.values.firstWhere(
-      (e) => e.label.toLowerCase() == text.toLowerCase(),
-      orElse: () => MobilKategori.engkel,
-    );
-  }
-}
+import 'package:notes_order/data/models/kategori_model.dart';
 
 class MobilModel {
-  final String? idMobil; // UBAH: Menjadi nullable (String?)
+  final int? idMobil;
   final String noPlat;
-  final MobilKategori? kategori;
+  final int? idKategori;
+  final KategoriModel? kategori;
   final int? tahun;
 
   MobilModel({
-    this.idMobil, // UBAH: Hapus 'required'
-    required this.noPlat, 
-    this.kategori, 
-    this.tahun
+    this.idMobil,
+    required this.noPlat,
+    this.idKategori,
+    this.kategori,
+    this.tahun,
   });
 
   factory MobilModel.fromJson(Map<String, dynamic> json) {
     return MobilModel(
-      idMobil: json['id_mobil']?.toString() ?? '',
+      idMobil: json['id_mobil'] as int?,
       noPlat: json['no_plat']?.toString() ?? '',
-      kategori: MobilKategori.fromString(json['kategori']?.toString()),
+      idKategori: json['id_kategori'] as int?,
+      
+      kategori: json['kategori_mobil'] != null 
+          ? KategoriModel.fromJson(json['kategori_mobil']) 
+          : null,
+          
       tahun: json['tahun'] != null ? int.tryParse(json['tahun'].toString()) : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      if (idMobil != null && idMobil!.isNotEmpty) 'id_mobil': int.tryParse(idMobil!),
+      if (idMobil != null) 'id_mobil': idMobil,
       'no_plat': noPlat,
-      'kategori': kategori?.label,
-      'tahun': tahun,
+      if (idKategori != null) 'id_kategori': idKategori,
+      if (tahun != null) 'tahun': tahun,
     };
+  }
+
+  MobilModel copyWith({
+    int? idMobil,
+    String? noPlat,
+    int? idKategori,
+    KategoriModel? kategori,
+    int? tahun,
+  }) {
+    return MobilModel(
+      idMobil: idMobil ?? this.idMobil,
+      noPlat: noPlat ?? this.noPlat,
+      idKategori: idKategori ?? this.idKategori,
+      kategori: kategori ?? this.kategori,
+      tahun: tahun ?? this.tahun,
+    );
   }
 }

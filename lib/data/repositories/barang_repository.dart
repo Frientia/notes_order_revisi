@@ -15,7 +15,7 @@ class BarangRepository {
     try {
       final response = await _supabase
           .from('barang')
-          .select('*, kategori_barang(*)')
+          .select('*, kategori_barang(*), mobil(*)')
           .order('nama_barang', ascending: true);
       
       return response.map((e) => BarangModel.fromJson(e)).toList();

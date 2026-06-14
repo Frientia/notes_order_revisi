@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/mobil_model.dart';
+import '../../data/models/kategori_model.dart';
 import '../../domain/providers/mobil_provider.dart';
+import '../../domain/providers/kategori_provider.dart'; // Import Provider Kategori
 
 class MobilScreen extends ConsumerStatefulWidget {
   const MobilScreen({super.key});
@@ -41,10 +43,8 @@ class _MobilScreenState extends ConsumerState<MobilScreen> {
             ),
             flexibleSpace: const FlexibleSpaceBar(
               titlePadding: EdgeInsets.only(left: 48, bottom: 16),
-              title: Text(
-                'Master Data Mobil', 
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)
-              ),
+              title: Text('Master Data Mobil',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
             ),
           ),
           SliverToBoxAdapter(
@@ -58,7 +58,8 @@ class _MobilScreenState extends ConsumerState<MobilScreen> {
               final filteredList = listMobil.where((mobil) {
                 final query = _searchQuery.toLowerCase();
                 final platMatch = mobil.noPlat.toLowerCase().contains(query);
-                final kategoriMatch = mobil.kategori?.label.toLowerCase().contains(query) ?? false;
+                // Sesuaikan pemanggilan kategori dengan model yang baru
+                final kategoriMatch = mobil.kategori?.namaKategori.toLowerCase().contains(query) ?? false;
                 return platMatch || kategoriMatch;
               }).toList();
 
@@ -188,7 +189,8 @@ class _MobilListItem extends ConsumerWidget {
                 children: [
                   Text(mobil.noPlat, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
                   const SizedBox(height: 4),
-                  Text(mobil.kategori?.label ?? 'Tanpa Kategori', style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500)),
+                  // Mengambil nama kategori dari relasi Join Supabase
+                  Text(mobil.kategori?.namaKategori ?? 'Belum ada kategori', style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -237,8 +239,7 @@ class _MobilListItem extends ConsumerWidget {
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Hapus Mobil', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text('Yakin ingin menghapus mobil dengan plat "${mobil.noPlat}"? Tindakan ini tidak dapat dibatalkan.'),
-        actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        content: Text('Yakin ingin menghapus mobil dengan plat "${mobil.noPlat}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -280,7 +281,8 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _platCtrl;
   late final TextEditingController _tahunCtrl;
-  MobilKategori? _selectedKategori;
+  
+  KategoriModel? _selectedKategori; // UBAH: Menggunakan KategoriModel
   bool _isSubmitting = false;
 
   @override
@@ -300,13 +302,17 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedKategori == null) {
+      _showErrorSnackBar('Pilih kategori terlebih dahulu!');
+      return;
+    }
 
     setState(() => _isSubmitting = true);
 
     final newMobil = MobilModel(
-      idMobil: widget.mobil?.idMobil ?? '',
+      idMobil: widget.mobil?.idMobil,
       noPlat: _platCtrl.text.trim().toUpperCase(),
-      kategori: _selectedKategori,
+      idKategori: _selectedKategori!.idKategori, // Mengambil ID dari objek Kategori
       tahun: int.tryParse(_tahunCtrl.text.trim()),
     );
 
@@ -348,42 +354,138 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
       ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 48,
-                height: 5,
-                margin: const EdgeInsets.only(bottom: 24),
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 48,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
+                ),
               ),
-            ),
-            Text(
-              isEdit ? 'Edit Data Mobil' : 'Tambah Mobil Baru',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-            ),
-            const SizedBox(height: 24),
-            _buildTextField(
-              controller: _platCtrl,
-              label: 'No. Plat (Contoh: B 1234 CD)',
-              textCapitalization: TextCapitalization.characters,
-              validator: (val) => val!.isEmpty ? 'No. Plat wajib diisi' : null,
-            ),
-            const SizedBox(height: 16),
-            _buildDropdown(),
-            const SizedBox(height: 16),
-            _buildTextField(
-              controller: _tahunCtrl,
-              label: 'Tahun Kendaraan',
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 32),
-            _buildSubmitButton(isEdit, primaryColor),
-            const SizedBox(height: 24),
-          ],
+              Text(
+                isEdit ? 'Edit Data Mobil' : 'Tambah Mobil Baru',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+              const SizedBox(height: 24),
+              _buildTextField(
+                controller: _platCtrl,
+                label: 'No. Plat (Contoh: B 1234 CD)',
+                textCapitalization: TextCapitalization.characters,
+                validator: (val) => val!.isEmpty ? 'No. Plat wajib diisi' : null,
+              ),
+              const SizedBox(height: 16),
+              
+              // Widget Dropdown Kategori + Tombol Quick Add
+              _buildKategoriDropdown(primaryColor),
+              
+              const SizedBox(height: 16),
+              _buildTextField(
+                controller: _tahunCtrl,
+                label: 'Tahun Kendaraan (Opsional)',
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 32),
+              _buildSubmitButton(isEdit, primaryColor),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  // === REVISI: DROPDOWN KATEGORI MENGGUNAKAN RIVERPOD ===
+  Widget _buildKategoriDropdown(Color primaryColor) {
+    // Memantau data dari tabel kategori_mobil
+    final kategoriAsync = ref.watch(kategoriMobilProvider);
+
+    return Row(
+      children: [
+        Expanded(
+          child: kategoriAsync.when(
+            data: (listKategori) {
+              return DropdownButtonFormField<KategoriModel>(
+                value: _selectedKategori,
+                decoration: InputDecoration(
+                  labelText: 'Kategori',
+                  labelStyle: TextStyle(color: Colors.grey.shade600),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                ),
+                items: listKategori.map((k) {
+                  return DropdownMenuItem(value: k, child: Text(k.namaKategori));
+                }).toList(),
+                onChanged: (newValue) {
+                  setState(() => _selectedKategori = newValue);
+                },
+                validator: (val) => val == null ? 'Pilih kategori' : null,
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, _) => Text('Gagal load: $err', style: const TextStyle(color: Colors.red)),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Tombol Quick Add Kategori
+        InkWell(
+          onTap: () => _tambahKategoriBaru(context),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            height: 56,
+            width: 56,
+            decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Fungsi Dialog untuk Quick Add Kategori Mobil
+  void _tambahKategoriBaru(BuildContext context) {
+    final txtKategori = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kategori Mobil Baru'),
+        content: TextField(
+          controller: txtKategori,
+          decoration: const InputDecoration(hintText: 'Misal: Tronton'),
+          textCapitalization: TextCapitalization.words,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          FilledButton(
+            onPressed: () async {
+              if (txtKategori.text.trim().isEmpty) return;
+              try {
+                // Simpan ke DB lewat repository
+                final repo = ref.read(kategoriRepositoryProvider);
+                await repo.addKategori('kategori_mobil', txtKategori.text.trim());
+                
+                // Refresh provider agar dropdown terupdate
+                ref.invalidate(kategoriMobilProvider);
+                
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kategori berhasil ditambahkan!'), backgroundColor: Colors.green));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
+                }
+              }
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
       ),
     );
   }
@@ -408,27 +510,6 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
       validator: validator,
-    );
-  }
-
-  Widget _buildDropdown() {
-    return DropdownButtonFormField<MobilKategori>(
-      value: _selectedKategori,
-      decoration: InputDecoration(
-        labelText: 'Kategori',
-        labelStyle: TextStyle(color: Colors.grey.shade600),
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      ),
-      items: MobilKategori.values.map((kategori) {
-        return DropdownMenuItem(value: kategori, child: Text(kategori.label));
-      }).toList(),
-      onChanged: (newValue) {
-        setState(() => _selectedKategori = newValue);
-      },
-      validator: (val) => val == null ? 'Kategori wajib dipilih' : null,
     );
   }
 
