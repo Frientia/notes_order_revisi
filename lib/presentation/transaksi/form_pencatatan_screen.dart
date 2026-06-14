@@ -770,157 +770,418 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   }
 
   // ============================================================================
-  // SHORTCUT MODALS (MENGGUNAKAN RELASI ID KATEGORI INT DATABASE BARU)
+  // SHORTCUT MODALS (BOTTOM SHEETS)
   // ============================================================================
+  
   void _showAddBarangShortcut(BuildContext context) {
-    final namaCtrl = TextEditingController();
-    KategoriModel? shortcutSelectedKategori; 
-    final primaryColor = const Color(0xFF1E3A5F);
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setStateModal) => AlertDialog(
-          backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text('Tambah Barang Baru', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(controller: namaCtrl, decoration: InputDecoration(labelText: 'Nama Barang', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)), autofocus: true),
-              const SizedBox(height: 16),
-              Consumer(
-                builder: (context, ref, child) {
-                  return ref.watch(kategoriBarangProvider).when(
-                    data: (kategoriList) => DropdownButtonFormField<KategoriModel>(
-                      value: shortcutSelectedKategori,
-                      decoration: InputDecoration(labelText: 'Kategori Barang', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                      items: kategoriList.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori))).toList(),
-                      onChanged: (v) => setStateModal(() => shortcutSelectedKategori = v),
-                    ),
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (_, __) => const Text('Gagal muat kategori'),
-                  );
-                }
-              ),
-            ],
-          ),
-          actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              onPressed: () async {
-                if (namaCtrl.text.isNotEmpty && shortcutSelectedKategori != null) {
-                  final newBarang = BarangModel(
-                    namaBarang: namaCtrl.text.trim(), 
-                    idKategori: shortcutSelectedKategori!.idKategori
-                  );
-                  await ref.read(barangControllerProvider.notifier).addBarang(newBarang);
-                  if (ctx.mounted) Navigator.pop(ctx);
-                }
-              },
-              child: const Text('Simpan', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const _ShortcutBarangFormSheet(),
     );
   }
 
   void _showAddMobilShortcut(BuildContext context) {
-    final platCtrl = TextEditingController();
-    final tahunCtrl = TextEditingController();
-    KategoriModel? selectedCat;
-    final primaryColor = const Color(0xFF1E3A5F);
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setStateModal) => AlertDialog(
-          backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text('Tambah Mobil Baru', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(controller: platCtrl, textCapitalization: TextCapitalization.characters, decoration: InputDecoration(labelText: 'No Plat', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)), autofocus: true),
-              const SizedBox(height: 16),
-              Consumer(
-                builder: (context, ref, child) {
-                  return ref.watch(kategoriMobilProvider).when(
-                    data: (kategoriList) => DropdownButtonFormField<KategoriModel>(
-                      value: selectedCat,
-                      decoration: InputDecoration(labelText: 'Kategori Mobil', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                      items: kategoriList.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori))).toList(),
-                      onChanged: (v) => setStateModal(() => selectedCat = v),
-                    ),
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (_, __) => const Text('Gagal muat kategori'),
-                  );
-                }
-              ),
-              const SizedBox(height: 16),
-              TextFormField(controller: tahunCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Tahun Armada', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
-            ],
-          ),
-          actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              onPressed: () async {
-                if (platCtrl.text.isNotEmpty && selectedCat != null && tahunCtrl.text.isNotEmpty) {
-                  final newMobil = MobilModel(
-                    noPlat: platCtrl.text.trim().toUpperCase(), 
-                    idKategori: selectedCat!.idKategori, 
-                    tahun: int.parse(tahunCtrl.text)
-                  );
-                  await ref.read(mobilControllerProvider.notifier).addMobil(newMobil);
-                  if (ctx.mounted) Navigator.pop(ctx);
-                }
-              },
-              child: const Text('Simpan', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const _ShortcutMobilFormSheet(),
     );
   }
 
   void _showAddTokoShortcut(BuildContext context) {
-    // [Isi fungsi _showAddTokoShortcut sama persis seperti sebelumnya]
-    final namaCtrl = TextEditingController();
-    final telponCtrl = TextEditingController();
-    final alamatCtrl = TextEditingController();
-    final primaryColor = const Color(0xFF1E3A5F);
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('Tambah Toko Baru', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(controller: namaCtrl, textCapitalization: TextCapitalization.words, decoration: InputDecoration(labelText: 'Nama Toko', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)), autofocus: true),
-            const SizedBox(height: 16),
-            TextFormField(controller: telponCtrl, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: 'No Telp', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
-            const SizedBox(height: 16),
-            TextFormField(controller: alamatCtrl, textCapitalization: TextCapitalization.words, decoration: InputDecoration(labelText: 'Alamat', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
-          ],
-        ),
-        actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () async {
-              if (namaCtrl.text.isNotEmpty && telponCtrl.text.isNotEmpty && alamatCtrl.text.isNotEmpty) {
-                final newToko = TokoModel(namaToko: namaCtrl.text.trim(), noTelp: telponCtrl.text.trim(), alamat: alamatCtrl.text.trim());
-                await ref.read(tokoControllerProvider.notifier).addToko(newToko);
-                if (ctx.mounted) Navigator.pop(ctx);
-              }
-            },
-            child: const Text('Simpan', style: TextStyle(fontWeight: FontWeight.bold)),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const _ShortcutTokoFormSheet(),
+    );
+  }
+}
+
+// ============================================================================
+// WIDGET KELAS KHUSUS UNTUK FORM BOTTOM SHEET
+// ============================================================================
+
+class _ShortcutBarangFormSheet extends ConsumerStatefulWidget {
+  const _ShortcutBarangFormSheet();
+
+  @override
+  ConsumerState<_ShortcutBarangFormSheet> createState() => _ShortcutBarangFormSheetState();
+}
+
+class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _namaCtrl = TextEditingController();
+  final _stockCtrl = TextEditingController(text: '0');
+  
+  KategoriModel? _selectedKategori;
+  final List<int> _selectedMobilIds = []; 
+  bool _isSubmitting = false;
+
+  String _searchMobilQuery = '';
+  int? _filterKatMobilDiForm;
+
+  @override
+  void dispose() {
+    _namaCtrl.dispose();
+    _stockCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedKategori == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih kategori terlebih dahulu!'), backgroundColor: Colors.red));
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    final newBarang = BarangModel(
+      namaBarang: _namaCtrl.text.trim(),
+      idKategori: _selectedKategori!.idKategori,
+      stock: int.tryParse(_stockCtrl.text.trim()) ?? 0,
+    );
+
+    try {
+      await ref.read(barangControllerProvider.notifier).addBarang(newBarang, listIdMobilCocok: _selectedMobilIds);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryColor = const Color(0xFF1E3A5F);
+    final height = MediaQuery.of(context).size.height * 0.9; 
+
+    return Container(
+      height: height,
+      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 12),
+      child: Column(
+        children: [
+          Center(child: Container(width: 48, height: 5, margin: const EdgeInsets.only(bottom: 24), decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+          const Text('Tambah Barang Baru', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 24),
+          
+          Expanded(
+            child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _namaCtrl, textCapitalization: TextCapitalization.words,
+                      decoration: InputDecoration(labelText: 'Nama Barang', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                      validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    ref.watch(kategoriBarangProvider).when(
+                      data: (listKategori) => DropdownButtonFormField<KategoriModel>(
+                        value: _selectedKategori,
+                        decoration: InputDecoration(labelText: 'Kategori', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                        items: listKategori.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori))).toList(),
+                        onChanged: (val) => setState(() => _selectedKategori = val),
+                        validator: (val) => val == null ? 'Pilih kategori' : null,
+                      ),
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, _) => Text('Error: $err', style: const TextStyle(color: Colors.red)),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _stockCtrl, keyboardType: TextInputType.number,
+                      decoration: InputDecoration(labelText: 'Stok Awal', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    const Text('Kecocokan Mobil', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            onChanged: (val) => setState(() => _searchMobilQuery = val),
+                            decoration: InputDecoration(
+                              hintText: 'Cari Plat...',
+                              prefixIcon: const Icon(Icons.search, size: 18),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 3,
+                          child: ref.watch(kategoriMobilProvider).when(
+                            data: (kategoriList) => DropdownButtonFormField<int?>(
+                              value: _filterKatMobilDiForm,
+                              decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
+                              isExpanded: true,
+                              items: [
+                                const DropdownMenuItem(value: null, child: Text('Semua Mobil')),
+                                ...kategoriList.map((k) => DropdownMenuItem(value: k.idKategori, child: Text(k.namaKategori, overflow: TextOverflow.ellipsis))),
+                              ],
+                              onChanged: (val) => setState(() => _filterKatMobilDiForm = val),
+                            ),
+                            loading: () => const SizedBox(),
+                            error: (_, __) => const SizedBox(),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 250,
+                      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+                      child: ref.watch(mobilControllerProvider).when(
+                        data: (listMobil) {
+                          final filteredMobil = listMobil.where((mobil) {
+                            final matchSearch = mobil.noPlat.toLowerCase().contains(_searchMobilQuery.toLowerCase());
+                            final matchKat = _filterKatMobilDiForm == null || mobil.idKategori == _filterKatMobilDiForm;
+                            return matchSearch && matchKat;
+                          }).toList();
+
+                          if (listMobil.isEmpty) return const Center(child: Text('Belum ada data mobil.'));
+                          if (filteredMobil.isEmpty) return const Center(child: Text('Mobil tidak ditemukan.'));
+
+                          return ListView.builder(
+                            itemCount: filteredMobil.length,
+                            itemBuilder: (context, index) {
+                              final mobil = filteredMobil[index];
+                              final isChecked = _selectedMobilIds.contains(mobil.idMobil);
+                              return CheckboxListTile(
+                                title: Text(mobil.noPlat, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text(mobil.kategori?.namaKategori ?? 'Tanpa Kategori', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                                value: isChecked,
+                                activeColor: const Color(0xFF1E3A5F),
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      _selectedMobilIds.add(mobil.idMobil!);
+                                    } else {
+                                      _selectedMobilIds.remove(mobil.idMobil);
+                                    }
+                                  });
+                                },
+                              );
+                            },
+                          );
+                        },
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (_, __) => const Center(child: Text('Gagal memuat mobil.')),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              onPressed: _isSubmitting ? null : _submitForm,
+              child: _isSubmitting ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) : const Text('Simpan Barang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShortcutMobilFormSheet extends ConsumerStatefulWidget {
+  const _ShortcutMobilFormSheet();
+
+  @override
+  ConsumerState<_ShortcutMobilFormSheet> createState() => _ShortcutMobilFormSheetState();
+}
+
+class _ShortcutMobilFormSheetState extends ConsumerState<_ShortcutMobilFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _platCtrl = TextEditingController();
+  final _tahunCtrl = TextEditingController();
+  KategoriModel? _selectedKategori;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _platCtrl.dispose();
+    _tahunCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate() || _selectedKategori == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lengkapi form dengan benar!'), backgroundColor: Colors.red));
+      return;
+    }
+    setState(() => _isSubmitting = true);
+    
+    try {
+      final newMobil = MobilModel(
+        noPlat: _platCtrl.text.trim().toUpperCase(), 
+        idKategori: _selectedKategori!.idKategori, 
+        tahun: int.parse(_tahunCtrl.text)
+      );
+      await ref.read(mobilControllerProvider.notifier).addMobil(newMobil);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryColor = const Color(0xFF1E3A5F);
+    
+    return Container(
+      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(child: Container(width: 48, height: 5, margin: const EdgeInsets.only(bottom: 24), decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+          const Text('Tambah Mobil Baru', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 24),
+          
+          Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _platCtrl, textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(labelText: 'No Plat', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)), 
+                  validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                ),
+                const SizedBox(height: 16),
+                ref.watch(kategoriMobilProvider).when(
+                  data: (kategoriList) => DropdownButtonFormField<KategoriModel>(
+                    value: _selectedKategori,
+                    decoration: InputDecoration(labelText: 'Kategori Mobil', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                    items: kategoriList.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori))).toList(),
+                    onChanged: (v) => setState(() => _selectedKategori = v),
+                    validator: (v) => v == null ? 'Pilih kategori' : null,
+                  ),
+                  loading: () => const CircularProgressIndicator(),
+                  error: (_, __) => const Text('Gagal muat kategori'),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _tahunCtrl, keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: 'Tahun Armada', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                  validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                ),
+              ],
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              onPressed: _isSubmitting ? null : _submitForm,
+              child: _isSubmitting ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) : const Text('Simpan Mobil', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShortcutTokoFormSheet extends ConsumerStatefulWidget {
+  const _ShortcutTokoFormSheet();
+
+  @override
+  ConsumerState<_ShortcutTokoFormSheet> createState() => _ShortcutTokoFormSheetState();
+}
+
+class _ShortcutTokoFormSheetState extends ConsumerState<_ShortcutTokoFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _namaCtrl = TextEditingController();
+  final _telponCtrl = TextEditingController();
+  final _alamatCtrl = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _namaCtrl.dispose();
+    _telponCtrl.dispose();
+    _alamatCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSubmitting = true);
+    
+    try {
+      final newToko = TokoModel(namaToko: _namaCtrl.text.trim(), noTelp: _telponCtrl.text.trim(), alamat: _alamatCtrl.text.trim());
+      await ref.read(tokoControllerProvider.notifier).addToko(newToko);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryColor = const Color(0xFF1E3A5F);
+    
+    return Container(
+      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(child: Container(width: 48, height: 5, margin: const EdgeInsets.only(bottom: 24), decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+          const Text('Tambah Toko Baru', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 24),
+          
+          Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _namaCtrl, textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(labelText: 'Nama Toko', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                  validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _telponCtrl, keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(labelText: 'No Telp', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _alamatCtrl, textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(labelText: 'Alamat', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                ),
+              ],
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              onPressed: _isSubmitting ? null : _submitForm,
+              child: _isSubmitting ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) : const Text('Simpan Toko', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
           ),
         ],
       ),
