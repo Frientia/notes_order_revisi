@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../domain/providers/riwayat_provider_boss.dart';
-import '../../domain/providers/rekap_hutang_provider.dart';
 import '../../core/utils/formatters.dart';
 
 class RiwayatScreenBoss extends ConsumerStatefulWidget {
@@ -140,7 +139,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                             const Icon(Icons.calendar_month, size: 16),
                             const SizedBox(width: 4),
                             Text(
-                              // Membaca state customTanggal (yang sekarang bertipe DateTimeRange)
                               ref.watch(filterTanggalCustomProvider) != null &&
                                       filterWaktu == FilterWaktu.pilihTanggal
                                   ? '${DateFormat('dd MMM').format(ref.watch(filterTanggalCustomProvider)!.start)} - ${DateFormat('dd MMM yyyy').format(ref.watch(filterTanggalCustomProvider)!.end)}'
@@ -151,7 +149,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                         selected: filterWaktu == FilterWaktu.pilihTanggal,
                         selectedColor: Colors.indigo.shade100,
                         onSelected: (_) async {
-                          // Memunculkan Date Range Picker bawaan Flutter yang elegan
                           final DateTimeRange? pickedRange = await showDateRangePicker(
                             context: context,
                             initialDateRange: ref.read(filterTanggalCustomProvider),
@@ -163,7 +160,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                               return Theme(
                                 data: Theme.of(context).copyWith(
                                   colorScheme: const ColorScheme.light(
-                                    primary: Color(0xFF1E3A5F), // Menyesuaikan warna tema bar Anda
+                                    primary: Color(0xFF1E3A5F),
                                     onPrimary: Colors.white,
                                     onSurface: Colors.black87,
                                   ),
@@ -174,7 +171,6 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                           );
                           
                           if (pickedRange != null) {
-                            // Simpan range objek (start & end) ke provider kustom Anda
                             ref.read(filterTanggalCustomProvider.notifier).state = pickedRange;
                             ref.read(filterWaktuRiwayatProvider.notifier).state = FilterWaktu.pilihTanggal;
                           }
@@ -261,7 +257,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                   );
                 }
 
-                // --- PROSES GROUPING: Mengelompokkan List barang berdasarkan idNota ---
+                // --- PROSES GROUPING ---
                 final Map<int, List<RiwayatTransaksi>> groupedNota = {};
                 for (var item in data) {
                   if (!groupedNota.containsKey(item.idNota)) {
@@ -277,15 +273,11 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                     final int idNota = sortedNotaIds[index];
                     final List<RiwayatTransaksi> itemsDiNotaIni = groupedNota[idNota]!;
                     
-                    // Gunakan data barang pertama sebagai referensi info dasar nota
                     final infoUtama = itemsDiNotaIni.first;
                     final tglFormat = DateFormat('dd MMM yyyy, HH:mm').format(infoUtama.tanggal);
                     final isLunas = infoUtama.status == 'LUNAS' || infoUtama.status == 'SELESAI';
 
-                    // Hitung total harga gabungan seluruh barang di dalam satu nota ini
                     final double totalHargaNota = itemsDiNotaIni.fold(0, (sum, item) => sum + item.subtotal);
-
-                    // Kumpulkan semua nopol unik yang ada di dalam nota ini
                     final Set<String> semuaNopolDiNota = itemsDiNotaIni.map((item) => item.nopolMobil).toSet();
 
                     return Card(
@@ -305,18 +297,21 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                                   'NOTA #$idNota • $tglFormat',
                                   style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12),
                                 ),
+                                // PERBAIKAN WARNA STATUS LUNAS/HUTANG
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: isLunas ? Colors.green.withValues(alpha: 26) : Colors.orange.withValues(alpha: 26),
+                                    color: isLunas ? Colors.green.shade50 : Colors.orange.shade50,
                                     borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: isLunas ? Colors.green.shade200 : Colors.orange.shade200),
                                   ),
                                   child: Text(
                                     isLunas ? 'LUNAS' : 'HUTANG',
                                     style: TextStyle(
-                                      color: isLunas ? Colors.green : Colors.orange.shade800,
+                                      color: isLunas ? Colors.green.shade700 : Colors.orange.shade800,
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                                 ),
@@ -327,15 +322,14 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                             // 2. META DATA NOTA (Toko & Ringkasan Jumlah Mobil)
                             Row(
                               children: [
-                                _buildInfoChip(Icons.store, infoUtama.namaToko, Colors.blueGrey),
+                                _buildInfoChip(Icons.store, infoUtama.namaToko, Colors.blueGrey.shade600),
                                 const SizedBox(width: 8),
-                                // Jika hanya ada 1 mobil, tampilkan nopolnya. Jika lebih, tampilkan jumlah unitnya.
                                 _buildInfoChip(
                                   Icons.directions_car, 
                                   semuaNopolDiNota.length == 1 
                                       ? semuaNopolDiNota.first 
                                       : '${semuaNopolDiNota.length} Unit Mobil', 
-                                  Colors.teal
+                                  Colors.teal.shade600
                                 ),
                               ],
                             ),
@@ -355,7 +349,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                               child: Divider(height: 1),
                             ),
 
-                            // 3. DAFTAR SUB-BARANG (No Plat ditaruh di sini secara dinamis per item)
+                            // 3. DAFTAR SUB-BARANG
                             const Text(
                               'Daftar Komponen Sparepart:',
                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
@@ -386,16 +380,17 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                                               const SizedBox(height: 4),
                                               Row(
                                                 children: [
-                                                  // LABEL NO PLAT MOBIL PER BARANG
+                                                  // PERBAIKAN WARNA NOPOL MOBIL (SUB-ITEM)
                                                   Container(
                                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                                     decoration: BoxDecoration(
-                                                      color: Colors.teal.withValues(alpha: 20),
+                                                      color: Colors.teal.shade50,
                                                       borderRadius: BorderRadius.circular(4),
+                                                      border: Border.all(color: Colors.teal.shade200),
                                                     ),
                                                     child: Text(
                                                       subItem.nopolMobil,
-                                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.teal, fontFamily: 'monospace'),
+                                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.teal.shade800, fontFamily: 'monospace'),
                                                     ),
                                                   ),
                                                   const SizedBox(width: 6),
@@ -470,21 +465,23 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
     );
   }
 
+  // PERBAIKAN WARNA INFO CHIP (SOLID WARNA + TEKS PUTIH)
   Widget _buildInfoChip(IconData icon, String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 20),
+        color: color, // Menggunakan warna solid penuh, bukan transparan
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color),
+          const Icon(Icons.circle, size: 0), // Hanya pengganjal aman
+          Icon(icon, size: 14, color: Colors.white), // Ikon putih
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600), // Teks putih
           ),
         ],
       ),
@@ -685,31 +682,35 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                   const SizedBox(height: 24),
                   const Text('Bukti Kwitansi:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                   const SizedBox(height: 8),
-                  Consumer(
-                    builder: (context, ref, child) {
-                      final urlState = ref.watch(urlKwitansiProvider(item.idNota));
-                      return urlState.when(
-                        loading: () => const Center(child: Padding(padding: EdgeInsets.all(20.0), child: CircularProgressIndicator())),
-                        error: (err, stack) => const Center(child: Text('Gagal memuat gambar', style: TextStyle(color: Colors.red))),
-                        data: (url) {
-                          if (url == null || url.isEmpty) {
-                            return Container(
-                              width: double.infinity, padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
-                              child: const Column(
-                                children: [
-                                  Icon(Icons.image_not_supported, color: Colors.grey, size: 40),
-                                  SizedBox(height: 8),
-                                  Text('Petugas tidak mengupload foto kwitansi.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
-                                ],
-                              ),
-                            );
-                          }
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(url, fit: BoxFit.cover, width: double.infinity),
-                          );
-                        },
+                  
+                  Builder(
+                    builder: (context) {
+                      if (item.imgKwitansi == null || item.imgKwitansi!.isEmpty) {
+                        return Container(
+                          width: double.infinity, padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
+                          child: const Column(
+                            children: [
+                              Icon(Icons.image_not_supported, color: Colors.grey, size: 40),
+                              SizedBox(height: 8),
+                              Text('Petugas tidak mengupload foto kwitansi.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+                            ],
+                          ),
+                        );
+                      }
+                      
+                      // Jika gambar ada, langsung tampilkan!
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          item.imgKwitansi!, 
+                          fit: BoxFit.cover, 
+                          width: double.infinity,
+                          loadingBuilder: (ctx, child, progress) {
+                            if (progress == null) return child;
+                            return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
+                          },
+                        ),
                       );
                     },
                   ),

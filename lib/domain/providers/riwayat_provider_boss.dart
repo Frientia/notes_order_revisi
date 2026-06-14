@@ -17,6 +17,7 @@ class RiwayatTransaksi {
   final double harga;
   final double subtotal;
   final String status;
+  final String? imgKwitansi;
 
   RiwayatTransaksi({
     required this.idDetail,
@@ -32,6 +33,7 @@ class RiwayatTransaksi {
     required this.harga,
     required this.subtotal,
     required this.status,
+    this.imgKwitansi,
   });
 }
 
@@ -43,7 +45,6 @@ final filterWaktuRiwayatProvider = StateProvider.autoDispose<FilterWaktu>(
 );
 final searchRiwayatProvider = StateProvider.autoDispose<String>((ref) => '');
 
-// --- PERBAIKAN 1: MENGUBAH TIPE DATA MENJADI DATETIMERANGE UNTUK FILTER RENTANG (A SAMPAI B) ---
 final filterTanggalCustomProvider = StateProvider<DateTimeRange?>((ref) => null);
 
 final filterKategoriBarangProvider = StateProvider.autoDispose<String?>((ref) => null);
@@ -63,9 +64,10 @@ final riwayatDataProvider = FutureProvider.autoDispose<List<RiwayatTransaksi>>((
         qty,
         harga_pembelian_barang,
         status,
-        barang (nama_barang, kategori),
+        barang (nama_barang, kategori_barang(nama_kategori)),
         toko (nama_toko),
-        mobil (no_plat, kategori),
+        mobil (no_plat, kategori_mobil(nama_kategori)),
+        kwitansi (img_url),
         pencatatan!inner (
           id_pencatatan,
           tgl_pencatatan,
@@ -95,15 +97,16 @@ final riwayatDataProvider = FutureProvider.autoDispose<List<RiwayatTransaksi>>((
         idNota: pencatatan['id_pencatatan'] as int? ?? 0,
         tanggal: tanggal,
         namaBarang: row['barang']?['nama_barang'] ?? 'Barang Terhapus',
-        kategoriBarang: row['barang']?['kategori'] ?? 'Tanpa Kategori',
+        kategoriBarang: row['barang']?['kategori_barang']?['nama_kategori'] ?? 'Tanpa Kategori',
         namaToko: row['toko']?['nama_toko'] ?? 'Tanpa Toko',
         nopolMobil: row['mobil']?['no_plat'] ?? '-',
-        kategoriMobil: row['mobil']?['kategori'] ?? 'Tanpa Kategori',
+        kategoriMobil: row['mobil']?['kategori_mobil']?['nama_kategori'] ?? 'Tanpa Kategori',
         namaPetugas: pencatatan['users']?['nama_user'] ?? 'Sistem',
         qty: qty,
         harga: harga,
         subtotal: qty * harga,
         status: row['status'] ?? 'PENDING',
+        imgKwitansi: row['kwitansi']?['img_url'],
       ),
     );
   }
@@ -115,7 +118,7 @@ final riwayatFilteredProvider = Provider.autoDispose<AsyncValue<List<RiwayatTran
   final rawState = ref.watch(riwayatDataProvider);
 
   final filterWaktu = ref.watch(filterWaktuRiwayatProvider);
-  final customRange = ref.watch(filterTanggalCustomProvider); // Membaca objek DateTimeRange
+  final customRange = ref.watch(filterTanggalCustomProvider); 
   final query = ref.watch(searchRiwayatProvider).toLowerCase();
 
   final filterKatBarang = ref.watch(filterKategoriBarangProvider);
@@ -128,7 +131,7 @@ final riwayatFilteredProvider = Provider.autoDispose<AsyncValue<List<RiwayatTran
     final now = DateTime.now();
 
     var filteredList = list.where((item) {
-      // --- 1. FILTER WAKTU (DIREFACTOR KE SISTEM RENTANG) ---
+      // --- 1. FILTER WAKTU ---
       if (filterWaktu == FilterWaktu.hariIni) {
         if (item.tanggal.year != now.year || item.tanggal.month != now.month || item.tanggal.day != now.day) {
           return false;
@@ -141,7 +144,6 @@ final riwayatFilteredProvider = Provider.autoDispose<AsyncValue<List<RiwayatTran
         final difference = now.difference(item.tanggal).inDays;
         if (difference < 0 || difference > 7) return false;
       } 
-      // PERBAIKAN UTAMA: Filter Tanggal A sampai B secara akurat dengan normalisasi batas hari
       else if (filterWaktu == FilterWaktu.pilihTanggal && customRange != null) {
         final startBoundary = DateTime(customRange.start.year, customRange.start.month, customRange.start.day).subtract(const Duration(seconds: 1));
         final endBoundary = DateTime(customRange.end.year, customRange.end.month, customRange.end.day, 23, 59, 59).add(const Duration(seconds: 1));
@@ -174,7 +176,7 @@ final riwayatFilteredProvider = Provider.autoDispose<AsyncValue<List<RiwayatTran
   });
 });
 
-// --- FITUR DASHBOARD: 5 PENCATATAN TERBARU HARI INI (OPTIMAL & BEBAS DUPLIKAT NOTA) ---
+// --- FITUR DASHBOARD: 5 PENCATATAN TERBARU HARI INI ---
 final recentTransaksiDashboardProvider = FutureProvider.autoDispose<List<RiwayatTransaksi>>((ref) async {
   final supabase = Supabase.instance.client;
   final now = DateTime.now();
@@ -186,9 +188,9 @@ final recentTransaksiDashboardProvider = FutureProvider.autoDispose<List<Riwayat
         qty,
         harga_pembelian_barang,
         status,
-        barang (nama_barang, kategori),
+        barang (nama_barang, kategori_barang(nama_kategori)),
         toko (nama_toko),
-        mobil (no_plat, kategori),
+        mobil (no_plat, kategori_mobil(nama_kategori)),
         pencatatan!inner (
           id_pencatatan,
           tgl_pencatatan,
@@ -202,7 +204,6 @@ final recentTransaksiDashboardProvider = FutureProvider.autoDispose<List<Riwayat
   final List<dynamic> rawData = response as List<dynamic>;
   List<RiwayatTransaksi> listHariIni = [];
   
-  // Array pelacak untuk memastikan satu ID Nota tidak dimasukkan dua kali (Mencegah duplikasi visual)
   final Set<int> trackedNotaIds = {};
 
   for (var row in rawData) {
@@ -212,11 +213,9 @@ final recentTransaksiDashboardProvider = FutureProvider.autoDispose<List<Riwayat
     final tglString = pencatatan['tgl_pencatatan'];
     final tanggal = tglString != null ? DateTime.parse(tglString).toLocal() : DateTime.now();
 
-    // Saring lokal: Hanya proses jika transaksi terjadi di hari yang sama dengan saat ini
     if (tanggal.year == now.year && tanggal.month == now.month && tanggal.day == now.day) {
       final int idNota = pencatatan['id_pencatatan'] as int? ?? 0;
       
-      // Jika idNota ini sudah pernah dimasukkan oleh perulangan sebelumnya, langsung lewati (skip)
       if (trackedNotaIds.contains(idNota)) continue;
 
       final qty = row['qty'] as int? ?? 0;
@@ -228,10 +227,10 @@ final recentTransaksiDashboardProvider = FutureProvider.autoDispose<List<Riwayat
           idNota: idNota,
           tanggal: tanggal,
           namaBarang: row['barang']?['nama_barang'] ?? 'Barang Terhapus',
-          kategoriBarang: row['barang']?['kategori'] ?? '-',
+          kategoriBarang: row['barang']?['kategori_barang']?['nama_kategori'] ?? '-',
           namaToko: row['toko']?['nama_toko'] ?? '-',
           nopolMobil: row['mobil']?['no_plat'] ?? '-',
-          kategoriMobil: row['mobil']?['kategori'] ?? '-',
+          kategoriMobil: row['mobil']?['kategori_mobil']?['nama_kategori'] ?? '-',
           namaPetugas: pencatatan['users']?['nama_user'] ?? 'Sistem',
           qty: qty,
           harga: harga,
@@ -240,11 +239,9 @@ final recentTransaksiDashboardProvider = FutureProvider.autoDispose<List<Riwayat
         ),
       );
 
-      // Tandai ID Nota ini agar barang berikutnya dari nota yang sama diabaikan
       trackedNotaIds.add(idNota);
     }
 
-    // Tepat ketika sudah terkumpul 5 nota unik hari ini, hentikan pencarian demi performa optimal
     if (listHariIni.length == 5) break;
   }
 
