@@ -202,7 +202,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.indigo.withOpacity(0.3),
+                            color: Colors.indigo.withValues(alpha: 77),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -308,7 +308,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: isLunas ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                                    color: isLunas ? Colors.green.withValues(alpha: 26) : Colors.orange.withValues(alpha: 26),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
@@ -390,7 +390,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                                                   Container(
                                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                                     decoration: BoxDecoration(
-                                                      color: Colors.teal.withOpacity(0.08),
+                                                      color: Colors.teal.withValues(alpha: 20),
                                                       borderRadius: BorderRadius.circular(4),
                                                     ),
                                                     child: Text(
@@ -474,7 +474,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 20),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(

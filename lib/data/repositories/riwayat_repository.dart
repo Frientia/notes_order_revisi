@@ -40,13 +40,23 @@ class RiwayatRepository {
     final response = await _supabase
         .from('detail_pencatatan')
         .select('''
-          id_detail_pencatatan, qty, harga_pembelian_barang, subtotal, status,
-          barang (nama_barang),
+          id_detail_pencatatan, 
+          qty, 
+          harga_pembelian_barang, 
+          subtotal, 
+          status, 
+          tgl_jatuh_tempo, 
+          tgl_pelunasan,
+          barang (
+            nama_barang, 
+            kategori_barang (nama_kategori)
+          ),
           mobil (no_plat),
           toko (nama_toko),
-          kwitansi (img_url)
+          kwitansi (img_url) 
         ''')
-        .eq('id_pencatatan', idPencatatan);
+        .eq('id_pencatatan', idPencatatan)
+        .order('id_detail_pencatatan', ascending: true);
 
     return response.map((e) => DetailPencatatanModel.fromJson(e)).toList();
   }

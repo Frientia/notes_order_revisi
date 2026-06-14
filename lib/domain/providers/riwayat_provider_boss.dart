@@ -179,7 +179,6 @@ final recentTransaksiDashboardProvider = FutureProvider.autoDispose<List<Riwayat
   final supabase = Supabase.instance.client;
   final now = DateTime.now();
 
-  // Membaca seluruh data pengadaan hari ini untuk memastikan tidak ada nota terpotong akibat filter limit
   final response = await supabase
       .from('detail_pencatatan')
       .select('''

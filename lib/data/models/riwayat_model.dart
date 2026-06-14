@@ -2,14 +2,13 @@ class PencatatanModel {
   final int idPencatatan;
   final DateTime tglPencatatan;
   final double totalHarga;
-  // TAMBAHAN: Variabel ini yang akan menampung daftar barang di dalam 1 nota
   final List<DetailPencatatanModel> details; 
 
   PencatatanModel({
     required this.idPencatatan,
     required this.tglPencatatan,
     required this.totalHarga,
-    this.details = const [], // Beri nilai default list kosong
+    this.details = const [],
   });
 
   factory PencatatanModel.fromJson(Map<String, dynamic> json) {
@@ -47,7 +46,10 @@ class DetailPencatatanModel {
   final String namaBarang;
   final String noPlatMobil;
   final String namaToko;
+  final String namaKategori;
   final String? imgKwitansi;
+  final DateTime? tglJatuhTempo;
+  final DateTime? tglPelunasan;
 
   DetailPencatatanModel({
     required this.idDetail,
@@ -58,21 +60,42 @@ class DetailPencatatanModel {
     required this.namaBarang,
     required this.noPlatMobil,
     required this.namaToko,
+    required this.namaKategori,
+    required this.tglJatuhTempo,
+    required this.tglPelunasan,
     this.imgKwitansi,
   });
 
   factory DetailPencatatanModel.fromJson(Map<String, dynamic> json) {
+    final barang = json['barang'] as Map<String, dynamic>?;
+    final mobil = json['mobil'] as Map<String, dynamic>?;
+    final toko = json['toko'] as Map<String, dynamic>?;
+    final kwitansi = json['kwitansi'] as Map<String, dynamic>?;
+    
+    final kategoriBarang = barang?['kategori_barang'] as Map<String, dynamic>?;
     return DetailPencatatanModel(
-      idDetail: json['id_detail_pencatatan'],
-      qty: json['qty'],
-      hargaPembelian: double.parse(json['harga_pembelian_barang'].toString()),
-      subtotal: double.parse(json['subtotal'].toString()),
-      status: json['status'] ?? 'PENDING',
+      idDetail: json['id_detail_pencatatan'] as int,
+      qty: json['qty'] as int,
+      hargaPembelian: double.tryParse(json['harga_pembelian_barang'].toString()) ?? 0,
+      subtotal: double.tryParse(json['subtotal'].toString()) ?? 0,
+      status: json['status']?.toString() ?? 'PENDING',
       
-      namaBarang: json['barang']?['nama_barang'] ?? '-',
-      noPlatMobil: json['mobil']?['no_plat'] ?? '-',
-      namaToko: json['toko']?['nama_toko'] ?? '-',
-      imgKwitansi: json['kwitansi']?['img_url'],
+      namaBarang: barang?['nama_barang']?.toString() ?? '-',
+      
+      namaKategori: kategoriBarang?['nama_kategori']?.toString() ?? 
+                    barang?['kategori']?.toString() ?? 
+                    'Tanpa Kategori',
+                    
+      noPlatMobil: mobil?['no_plat']?.toString() ?? '-',
+      namaToko: toko?['nama_toko']?.toString() ?? '-',
+      imgKwitansi: kwitansi?['img_url']?.toString(),
+      
+      tglJatuhTempo: json['tgl_jatuh_tempo'] != null 
+          ? DateTime.parse(json['tgl_jatuh_tempo'].toString()) 
+          : null,
+      tglPelunasan: json['tgl_pelunasan'] != null 
+          ? DateTime.parse(json['tgl_pelunasan'].toString()) 
+          : null,
     );
   }
 }
