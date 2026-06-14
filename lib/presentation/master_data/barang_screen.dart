@@ -635,10 +635,17 @@ class _BarangFormSheetState extends ConsumerState<_BarangFormSheet> {
           ),
         ),
         const SizedBox(width: 8),
+        const SizedBox(width: 8),
+        // Tombol Quick Add Kategori
         InkWell(
-          onTap: () { /* Fungsi tambah kategori (Sama seperti sebelumnya) */ },
+          onTap: () => _tambahKategoriBaru(context),
           borderRadius: BorderRadius.circular(12),
-          child: Container(height: 56, width: 56, decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.add, color: Colors.white)),
+          child: Container(
+            height: 56,
+            width: 56,
+            decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
         ),
       ],
     );
@@ -681,6 +688,48 @@ class _BarangFormSheetState extends ConsumerState<_BarangFormSheet> {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, __) => const Center(child: Text('Gagal memuat mobil.')),
+    );
+  }
+
+  // Fungsi Dialog untuk Quick Add Kategori Mobil
+  void _tambahKategoriBaru(BuildContext context) {
+    final txtKategori = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kategori Barang Baru'),
+        content: TextField(
+          controller: txtKategori,
+          decoration: const InputDecoration(hintText: 'Misal: Kampas Rem, Oli Mesin, dll.'),
+          textCapitalization: TextCapitalization.words,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          FilledButton(
+            onPressed: () async {
+              if (txtKategori.text.trim().isEmpty) return;
+              try {
+                // Simpan ke DB lewat repository
+                final repo = ref.read(kategoriRepositoryProvider);
+                await repo.addKategori('kategori_barang', txtKategori.text.trim());
+                
+                // Refresh provider agar dropdown terupdate
+                ref.invalidate(kategoriBarangProvider);
+                
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kategori berhasil ditambahkan!'), backgroundColor: Colors.green));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
+                }
+              }
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
     );
   }
 }
