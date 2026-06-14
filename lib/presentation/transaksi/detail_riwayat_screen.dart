@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../data/repositories/riwayat_repository.dart';
 import '../../core/utils/formatters.dart';
-import '../../data/models/kategori_model.dart';
 
 class DetailRiwayatScreen extends ConsumerWidget {
   final int idPencatatan;
@@ -156,7 +155,7 @@ class DetailRiwayatScreen extends ConsumerWidget {
                                           border: Border.all(color: Colors.grey.shade300)
                                         ),
                                         child: Text(
-                                          item.namaKategori ?? 'Tanpa Kategori',
+                                          item.namaKategori,
                                           style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
                                         ),
                                       ),
