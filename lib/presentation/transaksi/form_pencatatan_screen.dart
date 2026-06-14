@@ -283,6 +283,8 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
       
       ref.invalidate(transaksiDraftProvider);
 
+      ref.invalidate(barangControllerProvider);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transaksi Sukses Disimpan ke Riwayat! Stok otomatis diperbarui.'), backgroundColor: Colors.green));
         context.pop();
@@ -694,7 +696,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                         children: [
                                           Text('Tanggal Jatuh Tempo', style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.bold)),
                                           Text(
-                                            _jatuhTempoMap[idDetail] != null ? DateFormat('dd MMMM yyyy', 'id_ID').format(_jatuhTempoMap[idDetail]!) : 'Pilih Tanggal Pelunasan',
+                                            _jatuhTempoMap[idDetail] != null ? DateFormat('dd-MM-yyyy').format(_jatuhTempoMap[idDetail]!) : 'Pilih Tanggal Pelunasan',
                                             style: TextStyle(fontSize: 14, color: Colors.orange.shade900, fontWeight: FontWeight.w600),
                                           ),
                                         ],

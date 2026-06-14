@@ -202,7 +202,7 @@ class DetailRiwayatScreen extends ConsumerWidget {
                                     Expanded(
                                       child: Text(
                                         item.tglJatuhTempo != null 
-                                          ? 'Jatuh Tempo: ${DateFormat('dd MMM yyyy').format(item.tglJatuhTempo!)}'
+                                          ? 'Jatuh Tempo: ${DateFormat('dd-MM-yyyy').format(item.tglJatuhTempo!)}'
                                           : 'Jatuh Tempo: Belum Diatur',
                                         style: TextStyle(color: Colors.orange.shade800, fontSize: 12, fontWeight: FontWeight.bold),
                                       ),
