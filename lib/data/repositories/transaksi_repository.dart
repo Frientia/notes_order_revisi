@@ -25,10 +25,12 @@ class TransaksiRepository {
         return existing['id_pencatatan'] as int;
       }
 
+      // === PERBAIKAN DI SINI: Tambahkan tgl_pencatatan ===
       final newDraft = await _supabase.from('pencatatan').insert({
         'firebase_uid': firebaseUid,
         'total_harga': 0,
         'status_transaksi': 'DRAFT',
+        'tgl_pencatatan': DateTime.now().toIso8601String(), // Supabase biasanya butuh ini!
       }).select('id_pencatatan').single();
 
       return newDraft['id_pencatatan'] as int;
@@ -38,15 +40,30 @@ class TransaksiRepository {
   }
 
   Future<List<Map<String, dynamic>>> getDraftItems(int idPencatatan) async {
-    return await _supabase
+    // REVISI: Menggunakan Deep Join ke tabel kategori_barang dan kategori_mobil
+    final rawData = await _supabase
         .from('detail_pencatatan')
         .select('''
-          id_detail_pencatatan, id_barang, id_mobil, id_toko, qty, harga_pembelian_barang, status,
-          barang (nama_barang, kategori),
-          mobil (no_plat, kategori),
+          id_detail_pencatatan, id_barang, id_mobil, id_toko, qty, harga_pembelian_barang, status, tgl_jatuh_tempo,
+          barang (nama_barang, kategori_barang (nama_kategori)),
+          mobil (no_plat, kategori_mobil (nama_kategori)),
           toko (nama_toko)
         ''')
-        .eq('id_pencatatan', idPencatatan);
+        .eq('id_pencatatan', idPencatatan)
+        .order('id_detail_pencatatan', ascending: true);
+
+    // Mapping ulang agar UI FormPencatatan tetap bisa membaca 'kategori' dengan mudah
+    return rawData.map((item) {
+      final b = item['barang'] as Map<String, dynamic>?;
+      if (b != null) {
+        b['kategori'] = b['kategori_barang']?['nama_kategori'];
+      }
+      final m = item['mobil'] as Map<String, dynamic>?;
+      if (m != null) {
+        m['kategori'] = m['kategori_mobil']?['nama_kategori'];
+      }
+      return item;
+    }).toList();
   }
 
   Future<void> addItemToDraft({
@@ -70,6 +87,16 @@ class TransaksiRepository {
 
   Future<void> removeItemFromDraft(int idDetail) async {
     await _supabase.from('detail_pencatatan').delete().eq('id_detail_pencatatan', idDetail);
+  }
+
+  // =======================================================================
+  // FUNGSI BARU: Update Qty Item Draft (Dipanggil dari Form Pencatatan)
+  // =======================================================================
+  Future<void> updateQtyItemDraft(int idDetail, int newQty) async {
+    await _supabase
+        .from('detail_pencatatan')
+        .update({'qty': newQty})
+        .eq('id_detail_pencatatan', idDetail);
   }
 
   Future<void> finalisasiTransaksi({
@@ -109,6 +136,7 @@ class TransaksiRepository {
           await _supabase.from('detail_pencatatan').update({
             'harga_pembelian_barang': item['harga_pembelian_barang'],
             'status': item['status'],
+            if (item['tgl_jatuh_tempo'] != null) 'tgl_jatuh_tempo': item['tgl_jatuh_tempo'],
             'id_kwitansi': realIdKwitansi,
           }).eq('id_detail_pencatatan', item['id_detail_pencatatan']);
         }

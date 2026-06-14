@@ -33,6 +33,11 @@ class TransaksiDraftNotifier extends StateNotifier<DraftState> {
       final items = await _repository.getDraftItems(id);
       state = DraftState(idPencatatan: id, items: items, isLoading: false);
     } catch (e) {
+      // === PERBAIKAN DI SINI: Jangan diam saja, print errornya ke console! ===
+      print("🚨🚨🚨 GAGAL MEMBUAT DRAFT DI SUPABASE 🚨🚨🚨");
+      print(e.toString());
+      print("🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨");
+      
       state = state.copyWith(isLoading: false);
     }
   }
@@ -44,24 +49,55 @@ class TransaksiDraftNotifier extends StateNotifier<DraftState> {
     required int qty,
     double hargaEstimasi = 0,
   }) async {
-    if (state.idPencatatan == null) return;
-    await _repository.addItemToDraft(
-      idPencatatan: state.idPencatatan!,
-      idBarang: idBarang,
-      idMobil: idMobil,
-      idToko: idToko,
-      qty: qty,
-      hargaEstimasi: hargaEstimasi,
-    );
-    // Refresh list item langsung dari database
-    final items = await _repository.getDraftItems(state.idPencatatan!.toInt());
-    state = state.copyWith(items: items);
+    if (state.idPencatatan == null) {
+      // Jika draft belum terbuat, lempar error
+      throw Exception('ID Draft belum siap. Coba kembali ke menu utama lalu buka lagi.');
+    }
+    
+    try {
+      await _repository.addItemToDraft(
+        idPencatatan: state.idPencatatan!,
+        idBarang: idBarang,
+        idMobil: idMobil,
+        idToko: idToko,
+        qty: qty,
+        hargaEstimasi: hargaEstimasi,
+      );
+      // Refresh list item langsung dari database
+      final items = await _repository.getDraftItems(state.idPencatatan!);
+      state = state.copyWith(items: items);
+    } catch (e) {
+      // Melempar error ke UI agar muncul di layar
+      throw Exception(e.toString()); 
+    }
   }
 
   Future<void> hapusItemDariDraft(int idDetail) async {
     await _repository.removeItemFromDraft(idDetail);
     final items = await _repository.getDraftItems(state.idPencatatan!);
     state = state.copyWith(items: items);
+  }
+
+  // === FUNGSI BARU: EDIT QTY DI DRAFT ===
+  Future<void> updateQtyItemDraft(int idDetail, int newQty) async {
+    // 1. Optimistic Update (Ubah UI seketika tanpa nunggu loading DB)
+    state = state.copyWith(
+      items: state.items.map((item) {
+        if (item['id_detail_pencatatan'] == idDetail) {
+          return {...item, 'qty': newQty}; 
+        }
+        return item;
+      }).toList(),
+    );
+
+    try {
+      await _repository.updateQtyItemDraft(idDetail, newQty);
+    } catch (e) {
+      // 3. Rollback jika koneksi internet terputus/gagal
+      final items = await _repository.getDraftItems(state.idPencatatan!);
+      state = state.copyWith(items: items);
+      throw Exception('Gagal mengubah Qty di database');
+    }
   }
 }
 

@@ -4,14 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dropdown_search/dropdown_search.dart';
+import 'package:intl/intl.dart';
 
 import '../../data/models/barang_model.dart';
 import '../../data/models/mobil_model.dart';
 import '../../data/models/toko_model.dart';
+import '../../data/models/kategori_model.dart';
 import '../../data/repositories/transaksi_repository.dart';
+import '../../data/repositories/barang_repository.dart';
 import '../../domain/providers/barang_provider.dart';
 import '../../domain/providers/mobil_provider.dart';
 import '../../domain/providers/toko_provider.dart';
+import '../../domain/providers/kategori_provider.dart';
 import '../../domain/providers/transaksi_draft_provider.dart';
 import '../../core/utils/formatters.dart';
 
@@ -25,18 +29,23 @@ class FormPencatatanScreen extends ConsumerStatefulWidget {
 class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   final _formItemKey = GlobalKey<FormState>();
 
-  BarangKategori? _selectedKategoriBarang;
-  MobilKategori? _selectedKategoriMobil;
-
-  BarangModel? _selectedBarang;
+  // State Pilihan Master Data
   MobilModel? _selectedMobil;
+  BarangModel? _selectedBarang;
   TokoModel? _selectedToko;
   
+  // State Filter Dinamis Barang-Mobil (Many-to-Many)
+  List<BarangModel> _filteredBarangList = [];
+  bool _isLoadingBarang = false;
+  
+  // State Input Rencana Belanja
   final _qtyCtrl = TextEditingController();
   final _hargaEstimasiCtrl = TextEditingController();
 
+  // State Realisasi Lapangan (Berdasarkan ID Detail)
   final Map<int, TextEditingController> _hargaRiilControllers = {};
   final Map<int, String> _statusPembayaranMap = {};
+  final Map<int, DateTime?> _jatuhTempoMap = {}; 
   final Map<int, Uint8List> _kwitansiBytesMap = {};
   final Map<int, String> _kwitansiNameMap = {};
   final Map<int, int> _kwitansiRefMap = {};
@@ -53,6 +62,35 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     super.dispose();
   }
 
+  // ============================================================================
+  // LOGIKA FILTER MANY-TO-MANY BARANG SESUAI MOBIL
+  // ============================================================================
+  Future<void> _fetchBarangSesuaiMobil(int idMobil) async {
+    setState(() {
+      _isLoadingBarang = true;
+      _selectedBarang = null; 
+    });
+    
+    try {
+      final repo = ref.read(barangRepositoryProvider);
+      final hasil = await repo.getBarangSesuaiMobil(idMobil);
+      setState(() {
+        _filteredBarangList = hasil;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal filter barang: $e')));
+      }
+    } finally {
+      setState(() {
+        _isLoadingBarang = false;
+      });
+    }
+  }
+
+  // ============================================================================
+  // LOGIKA UPLOAD KWITANSI & JATUH TEMPO
+  // ============================================================================
   void _showImageSourceOptions(BuildContext context, int idDetail) {
     final existingKeys = _kwitansiBytesMap.keys.where((k) => k != idDetail).toList();
     final hasPreviousImage = existingKeys.isNotEmpty;
@@ -68,54 +106,28 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
-              ),
+              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Upload Kwitansi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-                ),
+                child: Align(alignment: Alignment.centerLeft, child: Text('Upload Kwitansi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87))),
               ),
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle),
-                  child: Icon(Icons.camera_alt, color: Colors.blue.shade600),
-                ),
+                leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle), child: Icon(Icons.camera_alt, color: Colors.blue.shade600)),
                 title: const Text('Buka Kamera', style: TextStyle(fontWeight: FontWeight.w500)),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _pickImage(idDetail, ImageSource.camera);
-                },
+                onTap: () { Navigator.pop(sheetContext); _pickImage(idDetail, ImageSource.camera); },
               ),
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
-                  child: Icon(Icons.photo_library, color: Colors.green.shade600),
-                ),
+                leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle), child: Icon(Icons.photo_library, color: Colors.green.shade600)),
                 title: const Text('Pilih dari Galeri', style: TextStyle(fontWeight: FontWeight.w500)),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _pickImage(idDetail, ImageSource.gallery);
-                },
+                onTap: () { Navigator.pop(sheetContext); _pickImage(idDetail, ImageSource.gallery); },
               ),
               if (hasPreviousImage) ...[
                 const Padding(padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8), child: Divider()),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: primaryColor.withAlpha(26), shape: BoxShape.circle),
-                    child: Icon(Icons.file_copy_rounded, color: primaryColor),
-                  ),
+                  leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: primaryColor.withAlpha(26), shape: BoxShape.circle), child: Icon(Icons.file_copy_rounded, color: primaryColor)),
                   title: const Text('Gunakan Kwitansi Sebelumnya', style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('Menyalin referensi struk dari item di atas'),
                   onTap: () {
@@ -126,9 +138,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                       _kwitansiNameMap[idDetail] = _kwitansiNameMap[prevKey]!;
                       _kwitansiRefMap[idDetail] = _kwitansiRefMap[prevKey]!; 
                     });
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Referensi Kwitansi ditambahkan!'), backgroundColor: primaryColor));
-                    }
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Referensi Kwitansi ditambahkan!'), backgroundColor: primaryColor));
                   },
                 ),
               ],
@@ -144,7 +154,6 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: source, imageQuality: 70);
-
       if (image != null) {
         final bytes = await image.readAsBytes();
         setState(() {
@@ -154,12 +163,56 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
     }
   }
 
+  Future<void> _pilihTanggalJatuhTempo(BuildContext context, int idDetail) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _jatuhTempoMap[idDetail] ?? DateTime.now().add(const Duration(days: 7)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null && picked != _jatuhTempoMap[idDetail]) {
+      setState(() {
+        _jatuhTempoMap[idDetail] = picked;
+      });
+    }
+  }
+
+  void _editQtyDraft(BuildContext context, int idDetail, int currentQty, String namaBarang) {
+    final qtyEditCtrl = TextEditingController(text: currentQty.toString());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Edit Qty: $namaBarang', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: qtyEditCtrl,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Jumlah Baru', border: OutlineInputBorder()),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          FilledButton(
+            onPressed: () {
+              final newQty = int.tryParse(qtyEditCtrl.text) ?? currentQty;
+              if (newQty > 0) {
+                ref.read(transaksiDraftProvider.notifier).updateQtyItemDraft(idDetail, newQty);
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================================
+  // LOGIKA TRANSAKSI & PERHITUNGAN
+  // ============================================================================
   double _hitungGrandTotal(List<Map<String, dynamic>> items) {
     double total = 0;
     for (var item in items) {
@@ -178,19 +231,19 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     for (var item in items) {
       final idDetail = item['id_detail_pencatatan'] as int;
       final hargaInput = double.tryParse(_hargaRiilControllers[idDetail]?.text ?? '0') ?? 0;
+      final statusPembayaran = _statusPembayaranMap[idDetail] ?? 'SELESAI';
       
       if (hargaInput <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal! Harga riil item "${item['barang']['nama_barang']}" tidak boleh 0.'), backgroundColor: Colors.redAccent),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal! Harga riil item "${item['barang']['nama_barang']}" tidak boleh 0.'), backgroundColor: Colors.redAccent));
         return; 
       }
-
       if (!_kwitansiBytesMap.containsKey(idDetail)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal! Kwitansi untuk item "${item['barang']['nama_barang']}" belum diupload.'), backgroundColor: Colors.red.shade600),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal! Kwitansi untuk item "${item['barang']['nama_barang']}" belum diupload.'), backgroundColor: Colors.red.shade600));
         return; 
+      }
+      if (statusPembayaran == 'PENDING' && _jatuhTempoMap[idDetail] == null) {
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pilih Tanggal Jatuh Tempo untuk hutang barang "${item['barang']['nama_barang']}".'), backgroundColor: Colors.orange.shade800));
+         return;
       }
     }
 
@@ -202,6 +255,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
         final idDetail = item['id_detail_pencatatan'] as int;
         final hargaInput = double.tryParse(_hargaRiilControllers[idDetail]?.text ?? '') ?? 0;
         final statusInput = _statusPembayaranMap[idDetail] ?? 'SELESAI';
+        final tglJatuhTempo = _jatuhTempoMap[idDetail];
         
         final refId = _kwitansiRefMap[idDetail] ?? idDetail;
         final isMaster = refId == idDetail;
@@ -210,8 +264,8 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
           'id_detail_pencatatan': idDetail,
           'harga_pembelian_barang': hargaInput,
           'status': statusInput,
+          'tgl_jatuh_tempo': statusInput == 'PENDING' && tglJatuhTempo != null ? tglJatuhTempo.toIso8601String() : null,
           'kwitansi_ref_id': refId,
-          
           'image_bytes': isMaster ? _kwitansiBytesMap[idDetail] : null, 
           'image_name': isMaster ? _kwitansiNameMap[idDetail] : null,
         });
@@ -226,21 +280,21 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
           );
       
       ref.invalidate(transaksiDraftProvider);
-      ref.invalidate(barangControllerProvider);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transaksi Sukses Disimpan ke Riwayat!'), backgroundColor: Colors.green),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transaksi Sukses Disimpan ke Riwayat! Stok otomatis diperbarui.'), backgroundColor: Colors.green));
         context.pop();
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
     } finally {
       setState(() => _isSubmitting = false);
     }
   }
 
+  // ============================================================================
+  // WIDGET UI BUILDER
+  // ============================================================================
   Widget _buildSearchableDropdownWithShortcut<T>({
     required String label,
     required T? selectedItem,
@@ -249,6 +303,8 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     required bool Function(T, T) compareFn,
     required Function(T?) onChanged,
     required VoidCallback onAddPressed,
+    bool isLoading = false,
+    String? hintText,
   }) {
     final primaryColor = const Color(0xFF1E3A5F);
     
@@ -260,42 +316,32 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
             selectedItem: selectedItem,
             items: (String filter, LoadProps? loadProps) {
               if (filter.isEmpty) return items;
-              return items.where((element) {
-                return itemAsString(element)
-                    .toLowerCase()
-                    .contains(filter.toLowerCase());
-              }).toList();
+              return items.where((element) => itemAsString(element).toLowerCase().contains(filter.toLowerCase())).toList();
             },
             itemAsString: itemAsString,
             compareFn: compareFn,
             popupProps: PopupProps.menu(
               showSearchBox: true,
+              emptyBuilder: (context, searchEntry) => Center(child: Text(hintText ?? 'Data tidak ditemukan', style: const TextStyle(color: Colors.grey))),
               searchFieldProps: TextFieldProps(
                 decoration: InputDecoration(
                   hintText: 'Ketik untuk mencari...',
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
+                  filled: true, fillColor: Colors.grey.shade100,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
                 ),
               ),
-              menuProps: const MenuProps(
-                elevation: 8,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-              ),
+              menuProps: const MenuProps(elevation: 8, shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16)))),
             ),
             decoratorProps: DropDownDecoratorProps(
               decoration: InputDecoration(
                 labelText: label,
                 labelStyle: TextStyle(color: Colors.grey.shade700),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 1.5)),
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                isDense: true,
+                filled: true, fillColor: Colors.grey.shade100,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                suffixIcon: isLoading ? const Padding(padding: EdgeInsets.all(12.0), child: CircularProgressIndicator(strokeWidth: 2)) : null,
               ),
             ),
             onSelected: onChanged,
@@ -307,13 +353,8 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
           onTap: onAddPressed,
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            height: 52,
-            width: 52,
-            decoration: BoxDecoration(
-              color: primaryColor.withAlpha(20),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: primaryColor.withAlpha(50)),
-            ),
+            height: 52, width: 52,
+            decoration: BoxDecoration(color: primaryColor.withAlpha(20), borderRadius: BorderRadius.circular(12), border: Border.all(color: primaryColor.withAlpha(50))),
             child: Icon(Icons.add, color: primaryColor, size: 24),
           ),
         ),
@@ -324,18 +365,9 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   @override
   Widget build(BuildContext context) {
     final draftState = ref.watch(transaksiDraftProvider);
-    final barangList = ref.watch(barangControllerProvider).valueOrNull ?? [];
     final mobilList = ref.watch(mobilControllerProvider).valueOrNull ?? [];
     final tokoList = ref.watch(tokoControllerProvider).valueOrNull ?? [];
     final primaryColor = const Color(0xFF1E3A5F);
-
-    final filteredBarang = _selectedKategoriBarang == null 
-        ? barangList 
-        : barangList.where((b) => b.kategori == _selectedKategoriBarang).toList();
-        
-    final filteredMobil = _selectedKategoriMobil == null 
-        ? mobilList 
-        : mobilList.where((m) => m.kategori == _selectedKategoriMobil).toList();
 
     if (draftState.isLoading || _isSubmitting) {
       return Scaffold(backgroundColor: Colors.grey.shade50, body: Center(child: CircularProgressIndicator(color: primaryColor)));
@@ -343,59 +375,17 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 20, offset: const Offset(0, -5))],
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Estimasi Grand Total', style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600)),
-                  Text(
-                    AppFormatters.rupiah(_hitungGrandTotal(draftState.items)),
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryColor),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 54),
-                  backgroundColor: primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  elevation: 0,
-                ),
-                onPressed: draftState.items.isEmpty ? null : () => _eksekusiSelesai(draftState.idPencatatan!, draftState.items),
-                child: const Text('SIMPAN TRANSAKSI', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-              ),
-            ],
-          ),
-        ),
-      ),
+      bottomNavigationBar: _buildBottomNav(draftState, primaryColor),
       body: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverAppBar(
-            elevation: 0,
-            backgroundColor: primaryColor,
-            foregroundColor: Colors.white,
-            pinned: true,
-            expandedHeight: 120,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
-            ),
+            elevation: 0, backgroundColor: primaryColor, foregroundColor: Colors.white, pinned: true, expandedHeight: 120,
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(bottom: Radius.circular(32))),
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsets.only(left: 56, bottom: 16),
               title: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Form Pencatatan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
                   Text('Draft #${draftState.idPencatatan}', style: TextStyle(fontSize: 12, color: const Color(0xFF1E3A5F).withAlpha(40), fontWeight: FontWeight.w500)),
@@ -403,92 +393,57 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
               ),
             ),
           ),
+          
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12, left: 4),
-                    child: Text('1. Rencana Belanja', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
-                  ),
+                  const Padding(padding: EdgeInsets.only(bottom: 12, left: 4), child: Text('1. Rencana Belanja', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87))),
                   Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 15, offset: const Offset(0, 8))],
-                    ),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 15, offset: const Offset(0, 8))]),
                     padding: const EdgeInsets.all(20),
                     child: Form(
                       key: _formItemKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          DropdownButtonFormField<BarangKategori>(
-                            value: _selectedKategoriBarang,
-                            decoration: InputDecoration(
-                              labelText: 'Filter Kategori Barang', 
-                              labelStyle: TextStyle(color: Colors.grey.shade700),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                              filled: true,
-                              fillColor: Colors.grey.shade100,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            ),
-                            items: [
-                              const DropdownMenuItem<BarangKategori>(value: null, child: Text('Semua Kategori')),
-                              ...BarangKategori.values.map((k) => DropdownMenuItem(value: k, child: Text(k.label))),
-                            ],
-                            onChanged: (v) => setState(() {
-                              _selectedKategoriBarang = v;
-                              _selectedBarang = null; 
-                            }),
+                          
+                          // URUTAN 1: PILIH MOBIL TERLEBIH DAHULU
+                          _buildSearchableDropdownWithShortcut<MobilModel>(
+                            label: 'Cari / Pilih Alokasi Mobil',
+                            selectedItem: _selectedMobil,
+                            items: mobilList,
+                            itemAsString: (m) => '${m.noPlat} (${m.kategori?.namaKategori ?? "-"})',
+                            compareFn: (a, b) => a.idMobil == b.idMobil,
+                            onChanged: (v) {
+                               setState(() {
+                                 _selectedMobil = v;
+                               });
+                               if (v != null && v.idMobil != null) {
+                                 _fetchBarangSesuaiMobil(v.idMobil!);
+                               }
+                            },
+                            onAddPressed: () => _showAddMobilShortcut(context),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 24),
 
+                          // URUTAN 2: PILIH BARANG (Isinya bergantung pada mobil yang dipilih)
                           _buildSearchableDropdownWithShortcut<BarangModel>(
-                            label: 'Cari / Pilih Barang',
+                            label: 'Cari / Pilih Barang Sesuai Mobil',
+                            hintText: _selectedMobil == null ? 'Pilih mobil terlebih dahulu' : 'Belum ada barang untuk mobil ini',
                             selectedItem: _selectedBarang,
-                            items: filteredBarang,
-                            itemAsString: (b) => '${b.namaBarang} (${b.kategori?.label ?? "Umum"})',
+                            items: _filteredBarangList,
+                            itemAsString: (b) => '${b.namaBarang} (Sisa Stok: ${b.stock})',
                             compareFn: (a, b) => a.idBarang == b.idBarang,
+                            isLoading: _isLoadingBarang,
                             onChanged: (v) => setState(() => _selectedBarang = v),
                             onAddPressed: () => _showAddBarangShortcut(context),
                           ),
                           const SizedBox(height: 24),
 
-                          DropdownButtonFormField<MobilKategori>(
-                            value: _selectedKategoriMobil,
-                            decoration: InputDecoration(
-                              labelText: 'Filter Kategori Mobil', 
-                              labelStyle: TextStyle(color: Colors.grey.shade700),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                              filled: true,
-                              fillColor: Colors.grey.shade100,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            ),
-                            items: [
-                              const DropdownMenuItem<MobilKategori>(value: null, child: Text('Semua Kategori')),
-                              ...MobilKategori.values.map((k) => DropdownMenuItem(value: k, child: Text(k.label))),
-                            ],
-                            onChanged: (v) => setState(() {
-                              _selectedKategoriMobil = v;
-                              _selectedMobil = null; 
-                            }),
-                          ),
-                          const SizedBox(height: 16),
-
-                          _buildSearchableDropdownWithShortcut<MobilModel>(
-                            label: 'Cari / Pilih Alokasi Mobil',
-                            selectedItem: _selectedMobil,
-                            items: filteredMobil,
-                            itemAsString: (m) => '${m.noPlat} (${m.kategori?.label ?? "-"})',
-                            compareFn: (a, b) => a.idMobil == b.idMobil,
-                            onChanged: (v) => setState(() => _selectedMobil = v),
-                            onAddPressed: () => _showAddMobilShortcut(context),
-                          ),
-                          const SizedBox(height: 24),
-
+                          // URUTAN 3: PILIH TOKO
                           _buildSearchableDropdownWithShortcut<TokoModel>(
                             label: 'Cari / Pilih Toko Tujuan',
                             selectedItem: _selectedToko,
@@ -504,16 +459,8 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                             children: [
                               Expanded(
                                 child: TextFormField(
-                                  controller: _qtyCtrl,
-                                  keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
-                                    labelText: 'Qty', 
-                                    labelStyle: TextStyle(color: Colors.grey.shade700),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                                    filled: true,
-                                    fillColor: Colors.grey.shade100,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
-                                  ),
+                                  controller: _qtyCtrl, keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(labelText: 'Qty', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
                                   validator: (v) => v!.isEmpty ? 'Wajib' : null,
                                 ),
                               ),
@@ -521,16 +468,8 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                               Expanded(
                                 flex: 2,
                                 child: TextFormField(
-                                  controller: _hargaEstimasiCtrl,
-                                  keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
-                                    labelText: 'Harga Estimasi (Rp)', 
-                                    labelStyle: TextStyle(color: Colors.grey.shade700),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                                    filled: true,
-                                    fillColor: Colors.grey.shade100,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
-                                  ),
+                                  controller: _hargaEstimasiCtrl, keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(labelText: 'Harga Estimasi (Rp)', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
                                 ),
                               ),
                             ],
@@ -538,30 +477,43 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                           const SizedBox(height: 24),
                           
                           FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size(double.infinity, 52),
-                              backgroundColor: primaryColor,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            onPressed: () {
+                            style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 52), backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                            
+                            // 1. TAMBAHKAN async DI SINI
+                            onPressed: () async { 
                               if (_formItemKey.currentState!.validate() && _selectedBarang != null && _selectedMobil != null && _selectedToko != null) {
-                                ref.read(transaksiDraftProvider.notifier).tambahItemKeDraft(
-                                      idBarang: int.parse(_selectedBarang!.idBarang!),
-                                      idMobil: int.parse(_selectedMobil!.idMobil!),
-                                      idToko: int.parse(_selectedToko!.idToko!),
-                                      qty: int.parse(_qtyCtrl.text),
-                                      hargaEstimasi: double.tryParse(_hargaEstimasiCtrl.text) ?? 0,
-                                    );
-                                _qtyCtrl.clear();
-                                _hargaEstimasiCtrl.clear();
-                                setState(() {
-                                  _selectedBarang = null;
-                                  _selectedMobil = null;
-                                  _selectedToko = null;
-                                });
+                                
+                                // 2. BUNGKUS DENGAN try-catch
+                                try {
+                                  // 3. TAMBAHKAN await DI DEPAN ref.read
+                                  await ref.read(transaksiDraftProvider.notifier).tambahItemKeDraft(
+                                        idBarang: int.parse(_selectedBarang!.idBarang.toString()),
+                                        idMobil: int.parse(_selectedMobil!.idMobil.toString()),
+                                        idToko: int.parse(_selectedToko!.idToko.toString()),
+                                        qty: int.parse(_qtyCtrl.text),
+                                        hargaEstimasi: double.tryParse(_hargaEstimasiCtrl.text) ?? 0,
+                                      );
+                                  
+                                  // Jika sukses, bersihkan form
+                                  _qtyCtrl.clear();
+                                  _hargaEstimasiCtrl.clear();
+                                  setState(() {
+                                    _selectedBarang = null;
+                                  });
+                                  
+                                } catch (e) {
+                                  // 4. MUNCULKAN ERROR DARI SUPABASE KE LAYAR
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Gagal Masuk Draft:\n${e.toString().replaceAll('Exception: ', '')}'), 
+                                      backgroundColor: Colors.red,
+                                      duration: const Duration(seconds: 4),
+                                    )
+                                  );
+                                }
+                                
                               } else if (_selectedBarang == null || _selectedMobil == null || _selectedToko == null) {
-                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih Barang, Mobil, dan Toko!'), backgroundColor: Colors.orange));
+                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih Mobil, Barang, dan Toko!'), backgroundColor: Colors.orange));
                               }
                             },
                             icon: const Icon(Icons.add_shopping_cart, size: 20),
@@ -572,27 +524,13 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12, left: 4),
-                    child: Text('2. Realisasi Lapangan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
-                  ),
+                  const Padding(padding: EdgeInsets.only(bottom: 12, left: 4), child: Text('2. Realisasi Lapangan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87))),
                   
                   if (draftState.items.isEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(vertical: 40),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(Icons.receipt_long_outlined, size: 48, color: Colors.grey.shade400),
-                          const SizedBox(height: 12),
-                          Text('Daftar belanja masih kosong', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid)),
+                      child: Column(children: [Icon(Icons.receipt_long_outlined, size: 48, color: Colors.grey.shade400), const SizedBox(height: 12), Text('Daftar belanja masih kosong', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500))]),
                     ),
                 ],
               ),
@@ -606,21 +544,19 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                 (ctx, i) {
                   final item = draftState.items[i];
                   final int idDetail = item['id_detail_pencatatan'];
+                  final int currentQty = item['qty'] ?? 1;
+                  final String namaBarang = item['barang']?['nama_barang'] ?? 'Unknown';
 
                   if (!_hargaRiilControllers.containsKey(idDetail)) {
-                    _hargaRiilControllers[idDetail] = TextEditingController(
-                      text: item['harga_pembelian_barang'].toString() == '0.0' ? '' : item['harga_pembelian_barang'].toString(),
-                    );
+                    _hargaRiilControllers[idDetail] = TextEditingController(text: item['harga_pembelian_barang'].toString() == '0.0' ? '' : item['harga_pembelian_barang'].toString());
                     _statusPembayaranMap[idDetail] = item['status'] ?? 'SELESAI';
                   }
+                  
+                  final isHutang = _statusPembayaranMap[idDetail] == 'PENDING';
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 15, offset: const Offset(0, 8))],
-                    ),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 15, offset: const Offset(0, 8))]),
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
@@ -629,61 +565,45 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  '${item['barang']?['nama_barang']} (${item['barang']?['kategori'] ?? "-"})',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
-                                ),
-                              ),
-                              InkWell(
-                                onTap: () => ref.read(transaksiDraftProvider.notifier).hapusItemDariDraft(idDetail),
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
-                                  child: Icon(Icons.delete_outline, color: Colors.red.shade600, size: 20),
-                                ),
+                              Expanded(child: Text(namaBarang, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87))),
+                              Row(
+                                children: [
+                                  InkWell(
+                                    onTap: () => _editQtyDraft(context, idDetail, currentQty, namaBarang),
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)), child: Icon(Icons.edit, color: Colors.blue.shade600, size: 20)),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: () => ref.read(transaksiDraftProvider.notifier).hapusItemDariDraft(idDetail),
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)), child: Icon(Icons.delete_outline, color: Colors.red.shade600, size: 20)),
+                                  ),
+                                ],
                               )
                             ],
                           ),
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              Icon(Icons.directions_car, size: 16, color: primaryColor),
-                              const SizedBox(width: 6),
+                              Icon(Icons.directions_car, size: 16, color: primaryColor), const SizedBox(width: 6),
                               Text('${item['mobil']?['no_plat']}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w500)),
                               const SizedBox(width: 16),
-                              Icon(Icons.store, size: 16, color: primaryColor),
-                              const SizedBox(width: 6),
+                              Icon(Icons.store, size: 16, color: primaryColor), const SizedBox(width: 6),
                               Text('${item['toko']?['nama_toko']}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w500)),
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
-                            child: Text('Qty: ${item['qty']} unit', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 13)),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Divider(height: 1, thickness: 1),
-                          ),
+                          Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)), child: Text('Qty: $currentQty unit', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 13))),
+                          const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider(height: 1, thickness: 1)),
                           
                           Row(
                             children: [
                               Expanded(
                                 flex: 3,
                                 child: TextFormField(
-                                  controller: _hargaRiilControllers[idDetail],
-                                  keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
-                                    labelText: 'Harga Riil (Rp)', 
-                                    labelStyle: TextStyle(color: Colors.grey.shade700),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                    filled: true, 
-                                    fillColor: Colors.grey.shade100
-                                  ),
+                                  controller: _hargaRiilControllers[idDetail], keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(labelText: 'Harga Riil (Rp)', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
                                   onChanged: (value) => setState(() {}), 
                                 ),
                               ),
@@ -692,23 +612,48 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                 flex: 2,
                                 child: DropdownButtonFormField<String>(
                                   value: _statusPembayaranMap[idDetail],
-                                  decoration: InputDecoration(
-                                    labelText: 'Status', 
-                                    labelStyle: TextStyle(color: Colors.grey.shade700),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                    filled: true, 
-                                    fillColor: Colors.grey.shade100
-                                  ),
+                                  decoration: InputDecoration(labelText: 'Pembayaran', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
                                   items: const [
-                                    DropdownMenuItem(value: 'SELESAI', child: Text('CASH', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold))),
-                                    DropdownMenuItem(value: 'PENDING', child: Text('HUTANG', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold))),
+                                    DropdownMenuItem(value: 'SELESAI', child: Text('CASH', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green))),
+                                    DropdownMenuItem(value: 'PENDING', child: Text('HUTANG', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orange))),
                                   ],
                                   onChanged: (v) => setState(() => _statusPembayaranMap[idDetail] = v!),
                                 ),
                               ),
                             ],
                           ),
+                          
+                          if (isHutang) ...[
+                            const SizedBox(height: 12),
+                            InkWell(
+                              onTap: () => _pilihTanggalJatuhTempo(context, idDetail),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.orange.shade200)),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.calendar_month_rounded, color: Colors.orange.shade800, size: 20),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Tanggal Jatuh Tempo', style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.bold)),
+                                          Text(
+                                            _jatuhTempoMap[idDetail] != null ? DateFormat('dd MMMM yyyy', 'id_ID').format(_jatuhTempoMap[idDetail]!) : 'Pilih Tanggal Pelunasan',
+                                            style: TextStyle(fontSize: 14, color: Colors.orange.shade900, fontWeight: FontWeight.w600),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(Icons.arrow_drop_down, color: Colors.orange.shade800),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+
                           const SizedBox(height: 16),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -719,22 +664,14 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                     foregroundColor: _kwitansiBytesMap.containsKey(idDetail) ? Colors.green.shade700 : primaryColor,
                                     side: BorderSide(color: _kwitansiBytesMap.containsKey(idDetail) ? Colors.green.shade400 : primaryColor.withAlpha(100), width: 1.5),
                                     backgroundColor: _kwitansiBytesMap.containsKey(idDetail) ? Colors.green.shade50 : Colors.transparent,
-                                    minimumSize: const Size(0, 48),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    minimumSize: const Size(0, 48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
                                   onPressed: () => _showImageSourceOptions(context, idDetail),
                                   icon: Icon(_kwitansiBytesMap.containsKey(idDetail) ? Icons.check_circle : Icons.camera_alt, size: 20),
-                                  label: Text(
-                                    _kwitansiBytesMap.containsKey(idDetail) ? 'Kwitansi Terunggah' : 'Upload Kwitansi',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                  ),
+                                  label: Text(_kwitansiBytesMap.containsKey(idDetail) ? 'Kwitansi Terunggah' : 'Upload Kwitansi', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                 ),
                               ),
-                              if (!_kwitansiBytesMap.containsKey(idDetail))
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 12),
-                                  child: Text('*Wajib', style: TextStyle(color: Colors.red, fontSize: 12, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold)),
-                                ),
+                              if (!_kwitansiBytesMap.containsKey(idDetail)) const Padding(padding: EdgeInsets.only(left: 12), child: Text('*Wajib', style: TextStyle(color: Colors.red, fontSize: 12, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold))),
                             ],
                           )
                         ],
@@ -752,42 +689,65 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     );
   }
 
+  Widget _buildBottomNav(DraftState draftState, Color primaryColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 20, offset: const Offset(0, -5))]),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Estimasi Grand Total', style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600)),
+                Text(AppFormatters.rupiah(_hitungGrandTotal(draftState.items)), style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryColor)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 54), backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              onPressed: draftState.items.isEmpty ? null : () => _eksekusiSelesai(draftState.idPencatatan!, draftState.items),
+              child: const Text('SIMPAN & SELESAIKAN TRANSAKSI', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================================
+  // SHORTCUT MODALS (MENGGUNAKAN PROVIDER KATEGORI)
+  // ============================================================================
   void _showAddBarangShortcut(BuildContext context) {
     final namaCtrl = TextEditingController();
-    BarangKategori? shortcutSelectedKategori; 
+    KategoriModel? shortcutSelectedKategori; 
     final primaryColor = const Color(0xFF1E3A5F);
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setStateModal) => AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Text('Tambah Barang Baru', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextFormField(
-                controller: namaCtrl, 
-                decoration: InputDecoration(
-                  labelText: 'Nama Barang', 
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
-                ), 
-                autofocus: true
-              ),
+              TextFormField(controller: namaCtrl, decoration: InputDecoration(labelText: 'Nama Barang', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)), autofocus: true),
               const SizedBox(height: 16),
-              DropdownButtonFormField<BarangKategori>(
-                value: shortcutSelectedKategori,
-                decoration: InputDecoration(
-                  labelText: 'Kategori Barang', 
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
-                ),
-                items: BarangKategori.values.map((k) => DropdownMenuItem(value: k, child: Text(k.label))).toList(),
-                onChanged: (v) => setStateModal(() => shortcutSelectedKategori = v),
+              Consumer(
+                builder: (context, ref, child) {
+                  return ref.watch(kategoriBarangProvider).when(
+                    data: (kategoriList) => DropdownButtonFormField<KategoriModel>(
+                      value: shortcutSelectedKategori,
+                      decoration: InputDecoration(labelText: 'Kategori Barang', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                      items: kategoriList.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori))).toList(),
+                      onChanged: (v) => setStateModal(() => shortcutSelectedKategori = v),
+                    ),
+                    loading: () => const CircularProgressIndicator(),
+                    error: (_, __) => const Text('Gagal muat kategori'),
+                  );
+                }
               ),
             ],
           ),
@@ -795,16 +755,10 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-              ),
+              style: FilledButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
               onPressed: () async {
                 if (namaCtrl.text.isNotEmpty && shortcutSelectedKategori != null) {
-                  final newBarang = BarangModel(
-                    namaBarang: namaCtrl.text.trim(), 
-                    kategori: shortcutSelectedKategori,
-                  );
+                  final newBarang = BarangModel(namaBarang: namaCtrl.text.trim(), idKategori: shortcutSelectedKategori!.idKategori);
                   await ref.read(barangControllerProvider.notifier).addBarang(newBarang);
                   if (ctx.mounted) Navigator.pop(ctx);
                 }
@@ -820,66 +774,46 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   void _showAddMobilShortcut(BuildContext context) {
     final platCtrl = TextEditingController();
     final tahunCtrl = TextEditingController();
-    MobilKategori? selectedCat;
+    KategoriModel? selectedCat;
     final primaryColor = const Color(0xFF1E3A5F);
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setStateModal) => AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Text('Tambah Mobil Baru', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextFormField(
-                controller: platCtrl, 
-                textCapitalization: TextCapitalization.characters, 
-                decoration: InputDecoration(
-                  labelText: 'No Plat', 
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
-                ), 
-                autofocus: true
+              TextFormField(controller: platCtrl, textCapitalization: TextCapitalization.characters, decoration: InputDecoration(labelText: 'No Plat', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)), autofocus: true),
+              const SizedBox(height: 16),
+              Consumer(
+                builder: (context, ref, child) {
+                  return ref.watch(kategoriMobilProvider).when(
+                    data: (kategoriList) => DropdownButtonFormField<KategoriModel>(
+                      value: selectedCat,
+                      decoration: InputDecoration(labelText: 'Kategori', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                      items: kategoriList.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori))).toList(),
+                      onChanged: (v) => setStateModal(() => selectedCat = v),
+                    ),
+                    loading: () => const CircularProgressIndicator(),
+                    error: (_, __) => const Text('Gagal muat kategori'),
+                  );
+                }
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<MobilKategori>(
-                value: selectedCat,
-                decoration: InputDecoration(
-                  labelText: 'Kategori', 
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
-                ),
-                items: MobilKategori.values.map((k) => DropdownMenuItem(value: k, child: Text(k.label))).toList(),
-                onChanged: (v) => setStateModal(() => selectedCat = v),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: tahunCtrl, 
-                keyboardType: TextInputType.number, 
-                decoration: InputDecoration(
-                  labelText: 'Tahun', 
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
-                )
-              ),
+              TextFormField(controller: tahunCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Tahun', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
             ],
           ),
           actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-              ),
+              style: FilledButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
               onPressed: () async {
                 if (platCtrl.text.isNotEmpty && selectedCat != null && tahunCtrl.text.isNotEmpty) {
-                  final newMobil = MobilModel(noPlat: platCtrl.text.trim().toUpperCase(), kategori: selectedCat, tahun: int.parse(tahunCtrl.text));
+                  final newMobil = MobilModel(noPlat: platCtrl.text.trim().toUpperCase(), idKategori: selectedCat!.idKategori, tahun: int.parse(tahunCtrl.text));
                   await ref.read(mobilControllerProvider.notifier).addMobil(newMobil);
                   if (ctx.mounted) Navigator.pop(ctx);
                 }
@@ -901,62 +835,26 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Tambah Toko Baru', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextFormField(
-              controller: namaCtrl, 
-              textCapitalization: TextCapitalization.words, 
-              decoration: InputDecoration(
-                labelText: 'Nama Toko', 
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
-              ), 
-              autofocus: true
-            ),
+            TextFormField(controller: namaCtrl, textCapitalization: TextCapitalization.words, decoration: InputDecoration(labelText: 'Nama Toko', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)), autofocus: true),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: telponCtrl, 
-              keyboardType: TextInputType.phone, 
-              decoration: InputDecoration(
-                labelText: 'No Telp', 
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
-              )
-            ),
+            TextFormField(controller: telponCtrl, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: 'No Telp', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: alamatCtrl, 
-              textCapitalization: TextCapitalization.words, 
-              decoration: InputDecoration(
-                labelText: 'Alamat', 
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
-              )
-            ),
+            TextFormField(controller: alamatCtrl, textCapitalization: TextCapitalization.words, decoration: InputDecoration(labelText: 'Alamat', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
           ],
         ),
         actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
           FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: primaryColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-            ),
+            style: FilledButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () async {
               if (namaCtrl.text.isNotEmpty && telponCtrl.text.isNotEmpty && alamatCtrl.text.isNotEmpty) {
-                final newToko = TokoModel(
-                  namaToko: namaCtrl.text.trim(),
-                  noTelp: telponCtrl.text.trim(),
-                  alamat: alamatCtrl.text.trim(),
-                );
+                final newToko = TokoModel(namaToko: namaCtrl.text.trim(), noTelp: telponCtrl.text.trim(), alamat: alamatCtrl.text.trim());
                 await ref.read(tokoControllerProvider.notifier).addToko(newToko);
                 if (ctx.mounted) Navigator.pop(ctx);
               }
