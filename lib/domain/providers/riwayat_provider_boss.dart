@@ -236,6 +236,7 @@ final recentTransaksiDashboardProvider = FutureProvider.autoDispose<List<Riwayat
           harga: harga,
           subtotal: qty * harga,
           status: row['status'] ?? 'PENDING',
+          imgKwitansi: row['kwitansi']?['img_url'],
         ),
       );
 
