@@ -87,28 +87,57 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     }
   }
 
-  Future<void> _tarikDataKeForm(Map<String, dynamic> item, List<MobilModel> allMobil, List<TokoModel> allToko) async {
+ Future<void> _tarikDataKeForm(
+  Map<String, dynamic> item,
+  List<MobilModel> allMobil,
+  List<TokoModel> allToko,
+) async {
+  final mobilId = item['id_mobil'];
+  final tokoId = item['id_toko'];
+  final barangId = item['id_barang'];
+
+  setState(() {
+    _editingIdDetail = item['id_detail_pencatatan'];
+
+    _qtyCtrl.text = item['qty']?.toString() ?? '';
+
+    _hargaEstimasiCtrl.text =
+        item['harga_pembelian_barang'] == null ||
+                item['harga_pembelian_barang'].toString() == '0.0'
+            ? ''
+            : item['harga_pembelian_barang'].toString();
+
+    _selectedMobil = allMobil
+        .where((m) => m.idMobil == mobilId)
+        .firstOrNull;
+
+    _selectedToko = allToko
+        .where((t) => t.idToko.toString() == tokoId.toString())
+        .firstOrNull;
+  });
+
+  if (_selectedMobil?.idMobil != null) {
+    await _fetchBarangSesuaiMobil(_selectedMobil!.idMobil!);
+
     setState(() {
-      _editingIdDetail = item['id_detail_pencatatan'];
-      _qtyCtrl.text = item['qty'].toString();
-      _hargaEstimasiCtrl.text = item['harga_pembelian_barang'].toString() == '0.0' ? '' : item['harga_pembelian_barang'].toString();
-      _selectedMobil = allMobil.where((m) => m.idMobil == item['mobil']?['id_mobil']).firstOrNull;
-      _selectedToko = allToko.where((t) => t.idToko == item['toko']?['id_toko']).firstOrNull;
+      _selectedBarang = _barangSesuaiMobilList
+          .where((b) => b.idBarang == barangId)
+          .firstOrNull;
     });
-
-    if (_selectedMobil != null && _selectedMobil!.idMobil != null) {
-      await _fetchBarangSesuaiMobil(_selectedMobil!.idMobil!);
-      setState(() {
-        _selectedBarang = _barangSesuaiMobilList.where((b) => b.idBarang == item['barang']?['id_barang']).firstOrNull;
-      });
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mode Edit Aktif: Silakan ubah data di form atas.'), duration: Duration(seconds: 2), backgroundColor: Colors.orange)
-      );
-    }
   }
+
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text(
+        'Mode Edit Aktif: Silakan ubah data di form atas.',
+      ),
+      backgroundColor: Colors.orange,
+      duration: Duration(seconds: 2),
+    ),
+  );
+}
 
   void _resetForm() {
     setState(() {
