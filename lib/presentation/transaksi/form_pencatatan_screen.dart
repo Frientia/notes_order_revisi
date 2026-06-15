@@ -226,22 +226,45 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     return total;
   }
 
-  Future<void> _eksekusiSelesai(int idDraft, List<Map<String, dynamic>> items) async {
+ Future<void> _eksekusiSelesai(int idDraft, List<Map<String, dynamic>> items) async {
     for (var item in items) {
       final idDetail = item['id_detail_pencatatan'] as int;
       final hargaInput = double.tryParse(_hargaRiilControllers[idDetail]?.text ?? '0') ?? 0;
       final statusPembayaran = _statusPembayaranMap[idDetail] ?? 'SELESAI';
       
+      // 1. Validasi Harga (Mencegah 0 dan Minus)
       if (hargaInput <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal! Harga riil item "${item['barang']['nama_barang']}" tidak boleh 0.'), backgroundColor: Colors.redAccent));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('⚠️ Tunggu dulu! Harga riil "${item['barang']['nama_barang']}" tidak boleh 0 atau minus.'), 
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating, // Membuat snackbar melayang
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
+        ));
         return; 
       }
+
+      // 2. Validasi Kwitansi
       if (!_kwitansiBytesMap.containsKey(idDetail)) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal! Kwitansi untuk item "${item['barang']['nama_barang']}" belum diupload.'), backgroundColor: Colors.red.shade600));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('📸 Oops! Kwitansi untuk "${item['barang']['nama_barang']}" wajib diupload.'), 
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
+        ));
         return; 
       }
+
+      // 3. Validasi Tanggal Jatuh Tempo (Khusus Hutang)
       if (statusPembayaran == 'PENDING' && _jatuhTempoMap[idDetail] == null) {
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pilih Tanggal Jatuh Tempo untuk hutang barang "${item['barang']['nama_barang']}".'), backgroundColor: Colors.orange.shade800));
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+           content: Text('🗓️ Pilih Tanggal Jatuh Tempo untuk hutang "${item['barang']['nama_barang']}".'), 
+           backgroundColor: Colors.orange.shade800,
+           behavior: SnackBarBehavior.floating,
+           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+           margin: const EdgeInsets.all(16),
+         ));
          return;
       }
     }
@@ -566,9 +589,33 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                   children: [
                                     _buildExternalLabel('Qty'),
                                     TextFormField(
-                                      controller: _qtyCtrl, keyboardType: TextInputType.number,
-                                      decoration: InputDecoration(hintText: '1', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
-                                      validator: (v) => v!.isEmpty ? 'Wajib' : null,
+                                      controller: _qtyCtrl, 
+                                      keyboardType: TextInputType.number,
+                                      decoration: InputDecoration(
+                                        hintText: '1', 
+                                        filled: true, 
+                                        fillColor: Colors.white, 
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), 
+                                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), 
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
+                                      ),
+                                      validator: (v) {
+                                        if (v == null || v.trim().isEmpty) return 'Wajib diisi!';
+                                        
+                                        final qtyInput = int.tryParse(v.trim());
+                                        if (qtyInput == null) return 'Harus berupa angka!';
+                                        if (qtyInput <= 0) return 'Qty tidak boleh 0 atau minus!';
+                                        
+                                        if (_selectedBarang != null) {
+                                          if (_selectedBarang!.stock <= 0) {
+                                            return 'Stok kosong! Tidak bisa dicatat.';
+                                          }
+                                          if (qtyInput > _selectedBarang!.stock) {
+                                            return 'Stok tidak cukup! (Sisa: ${_selectedBarang!.stock})';
+                                          }
+                                        }
+                                        return null; // Lolos sensor
+                                      },
                                     ),
                                   ],
                                 ),
@@ -581,8 +628,24 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                   children: [
                                     _buildExternalLabel('Harga Estimasi (Rp)'),
                                     TextFormField(
-                                      controller: _hargaEstimasiCtrl, keyboardType: TextInputType.number,
-                                      decoration: InputDecoration(hintText: 'Misal: 50000', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+                                      controller: _hargaEstimasiCtrl, 
+                                      keyboardType: TextInputType.number,
+                                      decoration: InputDecoration(
+                                        hintText: 'Misal: 50000', 
+                                        filled: true, 
+                                        fillColor: Colors.white, 
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), 
+                                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), 
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
+                                      ),
+                                      validator: (v) {
+                                        if (v != null && v.trim().isNotEmpty) {
+                                          final harga = double.tryParse(v.trim());
+                                          if (harga == null) return 'Harus berupa angka!';
+                                          if (harga < 0) return 'Harga tidak boleh minus!';
+                                        }
+                                        return null; // Lolos sensor
+                                      },
                                     ),
                                   ],
                                 ),
