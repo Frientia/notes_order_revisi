@@ -40,15 +40,14 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   
   TokoModel? _selectedToko;
   
-  // Data Barang yang ditarik dari DB berdasarkan Mobil terpilih
   List<BarangModel> _barangSesuaiMobilList = [];
   bool _isLoadingBarang = false;
   
-  // Controllers Input Rencana Belanja
   final _qtyCtrl = TextEditingController();
   final _hargaEstimasiCtrl = TextEditingController();
 
-  // Map untuk State Realisasi Lapangan
+  int? _editingIdDetail;
+
   final Map<int, TextEditingController> _hargaRiilControllers = {};
   final Map<int, String> _statusPembayaranMap = {};
   final Map<int, DateTime?> _jatuhTempoMap = {}; 
@@ -68,12 +67,11 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     super.dispose();
   }
 
-  // Fetching Barang yang Terkoneksi ke Mobil yang Dipilih
   Future<void> _fetchBarangSesuaiMobil(int idMobil) async {
     setState(() {
       _isLoadingBarang = true;
-      _selectedKategoriBarang = null; // Reset filter kategori barang
-      _selectedBarang = null; // Reset barang terpilih
+      _selectedKategoriBarang = null; 
+      _selectedBarang = null; 
     });
     
     try {
@@ -83,19 +81,46 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
         _barangSesuaiMobilList = hasil;
       });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memfilter barang: $e')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memfilter barang: $e')));
     } finally {
-      setState(() {
-        _isLoadingBarang = false;
-      });
+      setState(() => _isLoadingBarang = false);
     }
   }
 
-  // ==========================================
-  // LOGIKA GAMBAR & EDIT
-  // ==========================================
+  Future<void> _tarikDataKeForm(Map<String, dynamic> item, List<MobilModel> allMobil, List<TokoModel> allToko) async {
+    setState(() {
+      _editingIdDetail = item['id_detail_pencatatan'];
+      _qtyCtrl.text = item['qty'].toString();
+      _hargaEstimasiCtrl.text = item['harga_pembelian_barang'].toString() == '0.0' ? '' : item['harga_pembelian_barang'].toString();
+      _selectedMobil = allMobil.where((m) => m.idMobil == item['mobil']?['id_mobil']).firstOrNull;
+      _selectedToko = allToko.where((t) => t.idToko == item['toko']?['id_toko']).firstOrNull;
+    });
+
+    if (_selectedMobil != null && _selectedMobil!.idMobil != null) {
+      await _fetchBarangSesuaiMobil(_selectedMobil!.idMobil!);
+      setState(() {
+        _selectedBarang = _barangSesuaiMobilList.where((b) => b.idBarang == item['barang']?['id_barang']).firstOrNull;
+      });
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mode Edit Aktif: Silakan ubah data di form atas.'), duration: Duration(seconds: 2), backgroundColor: Colors.orange)
+      );
+    }
+  }
+
+  void _batalkanEdit() {
+    setState(() {
+      _editingIdDetail = null;
+      _qtyCtrl.clear();
+      _hargaEstimasiCtrl.clear();
+      _selectedBarang = null;
+      _selectedMobil = null;
+      _selectedToko = null;
+    });
+  }
+
   void _showImageSourceOptions(BuildContext context, int idDetail) {
     final existingKeys = _kwitansiBytesMap.keys.where((k) => k != idDetail).toList();
     final hasPreviousImage = existingKeys.isNotEmpty;
@@ -186,43 +211,12 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     }
   }
 
-  void _editQtyDraft(BuildContext context, int idDetail, int currentQty, String namaBarang) {
-    final qtyEditCtrl = TextEditingController(text: currentQty.toString());
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Edit Qty: $namaBarang', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: qtyEditCtrl,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: 'Jumlah Baru', border: OutlineInputBorder()),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-          FilledButton(
-            onPressed: () {
-              final newQty = int.tryParse(qtyEditCtrl.text) ?? currentQty;
-              if (newQty > 0) {
-                ref.read(transaksiDraftProvider.notifier).updateQtyItemDraft(idDetail, newQty);
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
-  }
-
   double _hitungGrandTotal(List<Map<String, dynamic>> items) {
     double total = 0;
     for (var item in items) {
       final idDetail = item['id_detail_pencatatan'] as int;
       final inputText = _hargaRiilControllers[idDetail]?.text ?? '';
-      final harga = inputText.isNotEmpty 
-          ? (double.tryParse(inputText) ?? 0) 
-          : (double.tryParse(item['harga_pembelian_barang'].toString()) ?? 0);
+      final harga = inputText.isNotEmpty ? (double.tryParse(inputText) ?? 0) : (double.tryParse(item['harga_pembelian_barang'].toString()) ?? 0);
       final qty = item['qty'] as int;
       total += (qty * harga);
     }
@@ -276,14 +270,13 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
       final grandTotal = _hitungGrandTotal(items);
 
       await ref.read(transaksiRepositoryProvider).finalisasiTransaksi(
-            idPencatatan: idDraft,
-            grandTotal: grandTotal,
-            finalItemsData: finalDataPayload,
-          );
+        idPencatatan: idDraft,
+        grandTotal: grandTotal,
+        finalItemsData: finalDataPayload,
+      );
       
       ref.invalidate(transaksiDraftProvider);
-
-      ref.invalidate(barangControllerProvider);
+      ref.invalidate(barangControllerProvider); 
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transaksi Sukses Disimpan ke Riwayat! Stok otomatis diperbarui.'), backgroundColor: Colors.green));
@@ -296,9 +289,14 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     }
   }
 
-  // ==========================================
-  // WIDGET UI UTAMA
-  // ==========================================
+  // WIDGET BANTUAN UNTUK LABEL DI LUAR KOTAK AGAR TIDAK NABRAK
+  Widget _buildExternalLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade800, fontSize: 13)),
+    );
+  }
+
   Widget _buildSearchableDropdownWithShortcut<T>({
     required String label,
     required T? selectedItem,
@@ -312,58 +310,65 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   }) {
     final primaryColor = const Color(0xFF1E3A5F);
     
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: DropdownSearch<T>(
-            selectedItem: selectedItem,
-            items: (String filter, LoadProps? loadProps) {
-              if (filter.isEmpty) return items;
-              return items.where((element) => itemAsString(element).toLowerCase().contains(filter.toLowerCase())).toList();
-            },
-            itemAsString: itemAsString,
-            compareFn: compareFn,
-            popupProps: PopupProps.menu(
-              showSearchBox: true,
-              emptyBuilder: (context, searchEntry) => Center(child: Text(hintText ?? 'Data tidak ditemukan', style: const TextStyle(color: Colors.grey))),
-              searchFieldProps: TextFieldProps(
-                decoration: InputDecoration(
-                  hintText: 'Ketik untuk mencari...',
-                  filled: true, fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+        _buildExternalLabel(label), // LABEL DI LUAR
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: DropdownSearch<T>(
+                selectedItem: selectedItem,
+                items: (String filter, LoadProps? loadProps) {
+                  if (filter.isEmpty) return items;
+                  return items.where((element) => itemAsString(element).toLowerCase().contains(filter.toLowerCase())).toList();
+                },
+                itemAsString: itemAsString,
+                compareFn: compareFn,
+                popupProps: PopupProps.menu(
+                  showSearchBox: true,
+                  emptyBuilder: (context, searchEntry) => Center(child: Text(hintText ?? 'Data tidak ditemukan', style: const TextStyle(color: Colors.grey))),
+                  searchFieldProps: TextFieldProps(
+                    decoration: InputDecoration(
+                      hintText: 'Ketik untuk mencari...',
+                      filled: true, fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    ),
+                  ),
+                  menuProps: const MenuProps(elevation: 8, shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16)))),
+                ),
+                decoratorProps: DropDownDecoratorProps(
+                  decoration: InputDecoration(
+                    hintText: 'Pilih...', // Menggunakan hintText bukan labelText
+                    hintStyle: TextStyle(color: Colors.grey.shade500),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                    filled: true, fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    suffixIcon: isLoading ? const Padding(padding: EdgeInsets.all(12.0), child: CircularProgressIndicator(strokeWidth: 2)) : null,
+                  ),
+                ),
+                onSelected: onChanged,
+                validator: (val) => val == null ? 'Wajib dipilih' : null,
+              ),
+            ),
+            if (onAddPressed != null) ...[
+              const SizedBox(width: 12),
+              InkWell(
+                onTap: onAddPressed,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  height: 52, width: 52,
+                  decoration: BoxDecoration(color: primaryColor.withAlpha(20), borderRadius: BorderRadius.circular(12), border: Border.all(color: primaryColor.withAlpha(50))),
+                  child: Icon(Icons.add, color: primaryColor, size: 24),
                 ),
               ),
-              menuProps: const MenuProps(elevation: 8, shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16)))),
-            ),
-            decoratorProps: DropDownDecoratorProps(
-              decoration: InputDecoration(
-                labelText: label,
-                labelStyle: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                filled: true, fillColor: Colors.grey.shade100,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                suffixIcon: isLoading ? const Padding(padding: EdgeInsets.all(12.0), child: CircularProgressIndicator(strokeWidth: 2)) : null,
-              ),
-            ),
-            onSelected: onChanged,
-            validator: (val) => val == null ? 'Wajib dipilih' : null,
-          ),
+            ]
+          ],
         ),
-        if (onAddPressed != null) ...[
-          const SizedBox(width: 12),
-          InkWell(
-            onTap: onAddPressed,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              height: 52, width: 52,
-              decoration: BoxDecoration(color: primaryColor.withAlpha(20), borderRadius: BorderRadius.circular(12), border: Border.all(color: primaryColor.withAlpha(50))),
-              child: Icon(Icons.add, color: primaryColor, size: 24),
-            ),
-          ),
-        ]
       ],
     );
   }
@@ -377,11 +382,9 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
       return Scaffold(backgroundColor: Colors.grey.shade50, body: Center(child: CircularProgressIndicator(color: primaryColor)));
     }
 
-    // LIST UNTUK MASTER DATA
     final allMobil = ref.watch(mobilControllerProvider).valueOrNull ?? [];
     final tokoList = ref.watch(tokoControllerProvider).valueOrNull ?? [];
     
-    // LIST UNTUK FILTER (Data yang tampil di dropdown bergantung pada pilihan Kategori)
     final mobilTampil = _selectedKategoriMobil == null 
         ? allMobil 
         : allMobil.where((m) => m.idKategori == _selectedKategoriMobil!.idKategori).toList();
@@ -417,9 +420,25 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Padding(padding: EdgeInsets.only(bottom: 12, left: 4), child: Text('1. Rencana Belanja', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87))),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Padding(padding: EdgeInsets.only(bottom: 12, left: 4), child: Text('1. Rencana Belanja', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87))),
+                      if (_editingIdDetail != null)
+                        TextButton.icon(
+                          onPressed: _batalkanEdit,
+                          icon: const Icon(Icons.cancel, size: 16, color: Colors.red),
+                          label: const Text('Batal Edit', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        )
+                    ],
+                  ),
                   Container(
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 15, offset: const Offset(0, 8))]),
+                    decoration: BoxDecoration(
+                      color: _editingIdDetail != null ? Colors.orange.shade50 : Colors.white, 
+                      borderRadius: BorderRadius.circular(20), 
+                      border: Border.all(color: _editingIdDetail != null ? Colors.orange.shade300 : Colors.transparent, width: 2),
+                      boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 15, offset: const Offset(0, 8))]
+                    ),
                     padding: const EdgeInsets.all(20),
                     child: Form(
                       key: _formItemKey,
@@ -427,31 +446,40 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           
-                          // ================= ALUR MOBIL =================
-                          // 1. Pilih Kategori Mobil
                           Consumer(builder: (ctx, ref, _) {
                             final katMobil = ref.watch(kategoriMobilProvider).valueOrNull ?? [];
-                            return DropdownButtonFormField<KategoriModel>(
-                              value: _selectedKategoriMobil,
-                              decoration: InputDecoration(labelText: '1. Filter Kategori Mobil (Opsional)', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                              items: [
-                                const DropdownMenuItem<KategoriModel>(value: null, child: Text('Semua Kategori Mobil')),
-                                ...katMobil.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori)))
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildExternalLabel('1. Filter Kategori Mobil (Opsional)'),
+                                DropdownButtonFormField<KategoriModel>(
+                                  value: _selectedKategoriMobil,
+                                  decoration: InputDecoration(
+                                    hintText: 'Semua Kategori Mobil',
+                                    filled: true, fillColor: Colors.white, 
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem<KategoriModel>(value: null, child: Text('Semua Kategori Mobil')),
+                                    ...katMobil.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori)))
+                                  ],
+                                  onChanged: (v) {
+                                    setState(() {
+                                      _selectedKategoriMobil = v;
+                                      _selectedMobil = null; 
+                                      _barangSesuaiMobilList.clear(); 
+                                      _selectedBarang = null;
+                                      _selectedKategoriBarang = null;
+                                    });
+                                  },
+                                ),
                               ],
-                              onChanged: (v) {
-                                setState(() {
-                                  _selectedKategoriMobil = v;
-                                  _selectedMobil = null; // Reset mobil karena kategori berubah
-                                  _barangSesuaiMobilList.clear(); // Bersihkan barang lama
-                                  _selectedBarang = null;
-                                  _selectedKategoriBarang = null;
-                                });
-                              },
                             );
                           }),
                           const SizedBox(height: 16),
 
-                          // 2. Pilih Mobil (Muncul sesuai filter kategori)
                           _buildSearchableDropdownWithShortcut<MobilModel>(
                             label: '2. Pilih Mobil Alokasi',
                             selectedItem: _selectedMobil,
@@ -461,39 +489,48 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                             onChanged: (v) {
                                setState(() => _selectedMobil = v);
                                if (v != null && v.idMobil != null) {
-                                 _fetchBarangSesuaiMobil(v.idMobil!); // Tembak DB untuk ambil barangnya mobil ini
+                                 _fetchBarangSesuaiMobil(v.idMobil!); 
                                }
                             },
                             onAddPressed: () => _showAddMobilShortcut(context),
                           ),
                           
-                          const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider(thickness: 1.5)),
+                          const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider(thickness: 1.5)),
 
-                          // ================= ALUR BARANG =================
-                          // 3. Pilih Kategori Barang
                           Consumer(builder: (ctx, ref, _) {
                             final katBarang = ref.watch(kategoriBarangProvider).valueOrNull ?? [];
-                            return DropdownButtonFormField<KategoriModel>(
-                              value: _selectedKategoriBarang,
-                              decoration: InputDecoration(labelText: '3. Filter Kategori Barang (Opsional)', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                              items: [
-                                const DropdownMenuItem<KategoriModel>(value: null, child: Text('Semua Kategori Barang')),
-                                ...katBarang.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori)))
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildExternalLabel('3. Filter Kategori Barang (Opsional)'),
+                                DropdownButtonFormField<KategoriModel>(
+                                  value: _selectedKategoriBarang,
+                                  decoration: InputDecoration(
+                                    hintText: 'Semua Kategori Barang',
+                                    filled: true, fillColor: Colors.white, 
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem<KategoriModel>(value: null, child: Text('Semua Kategori Barang')),
+                                    ...katBarang.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori)))
+                                  ],
+                                  onChanged: _selectedMobil == null ? null : (v) { 
+                                    setState(() {
+                                      _selectedKategoriBarang = v;
+                                      _selectedBarang = null; 
+                                    });
+                                  },
+                                ),
                               ],
-                              onChanged: _selectedMobil == null ? null : (v) { // Nonaktif jika mobil belum dipilih
-                                setState(() {
-                                  _selectedKategoriBarang = v;
-                                  _selectedBarang = null; // Reset barang terpilih
-                                });
-                              },
                             );
                           }),
                           const SizedBox(height: 16),
 
-                          // 4. Pilih Barang (Muncul sesuai mobil DAN filter kategori barang)
                           _buildSearchableDropdownWithShortcut<BarangModel>(
                             label: '4. Pilih Barang',
-                            hintText: _selectedMobil == null ? 'Pilih mobil terlebih dahulu' : 'Data barang tidak ditemukan',
+                            hintText: _selectedMobil == null ? 'Pilih mobil terlebih dahulu' : 'Cari barang...',
                             selectedItem: _selectedBarang,
                             items: barangTampil,
                             itemAsString: (b) => '${b.namaBarang} (Stok: ${b.stock})',
@@ -503,12 +540,11 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                             onAddPressed: () => _showAddBarangShortcut(context),
                           ),
                           
-                          const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider(thickness: 1.5)),
+                          const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider(thickness: 1.5)),
 
-                          // ================= LAINNYA =================
-                          // 5. Pilih Toko
                           _buildSearchableDropdownWithShortcut<TokoModel>(
                             label: '5. Pilih Toko Tujuan',
+                            hintText: 'Cari Toko...',
                             selectedItem: _selectedToko,
                             items: tokoList,
                             itemAsString: (t) => t.namaToko,
@@ -519,20 +555,33 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                           const SizedBox(height: 24),
 
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: TextFormField(
-                                  controller: _qtyCtrl, keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(labelText: 'Qty', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                                  validator: (v) => v!.isEmpty ? 'Wajib' : null,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildExternalLabel('Qty'),
+                                    TextFormField(
+                                      controller: _qtyCtrl, keyboardType: TextInputType.number,
+                                      decoration: InputDecoration(hintText: '1', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+                                      validator: (v) => v!.isEmpty ? 'Wajib' : null,
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
                                 flex: 2,
-                                child: TextFormField(
-                                  controller: _hargaEstimasiCtrl, keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(labelText: 'Harga Estimasi (Rp)', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildExternalLabel('Harga Estimasi (Rp)'),
+                                    TextFormField(
+                                      controller: _hargaEstimasiCtrl, keyboardType: TextInputType.number,
+                                      decoration: InputDecoration(hintText: 'Misal: 50000', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -540,39 +589,45 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                           const SizedBox(height: 24),
                           
                           FilledButton.icon(
-                            style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 52), backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 52), 
+                              backgroundColor: _editingIdDetail != null ? Colors.orange.shade700 : primaryColor, 
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                            ),
                             onPressed: () async {
                               if (_formItemKey.currentState!.validate() && _selectedBarang != null && _selectedMobil != null && _selectedToko != null) {
                                 try {
-                                  await ref.read(transaksiDraftProvider.notifier).tambahItemKeDraft(
-                                        idBarang: int.parse(_selectedBarang!.idBarang.toString()),
-                                        idMobil: int.parse(_selectedMobil!.idMobil.toString()),
-                                        idToko: int.parse(_selectedToko!.idToko.toString()),
-                                        qty: int.parse(_qtyCtrl.text),
-                                        hargaEstimasi: double.tryParse(_hargaEstimasiCtrl.text) ?? 0,
-                                      );
-                                  
-                                  _qtyCtrl.clear();
-                                  _hargaEstimasiCtrl.clear();
-                                  setState(() {
-                                    _selectedBarang = null;
-                                    // Sengaja tidak mereset _selectedMobil agar bisa input banyak barang untuk 1 truk sekaligus
-                                  });
+                                  if (_editingIdDetail != null) {
+                                    await ref.read(transaksiDraftProvider.notifier).hapusItemDariDraft(_editingIdDetail!);
+                                    await ref.read(transaksiDraftProvider.notifier).tambahItemKeDraft(
+                                      idBarang: int.parse(_selectedBarang!.idBarang.toString()),
+                                      idMobil: int.parse(_selectedMobil!.idMobil.toString()),
+                                      idToko: int.parse(_selectedToko!.idToko.toString()),
+                                      qty: int.parse(_qtyCtrl.text),
+                                      hargaEstimasi: double.tryParse(_hargaEstimasiCtrl.text) ?? 0,
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item berhasil diperbarui!'), backgroundColor: Colors.green));
+                                  } else {
+                                    await ref.read(transaksiDraftProvider.notifier).tambahItemKeDraft(
+                                      idBarang: int.parse(_selectedBarang!.idBarang.toString()),
+                                      idMobil: int.parse(_selectedMobil!.idMobil.toString()),
+                                      idToko: int.parse(_selectedToko!.idToko.toString()),
+                                      qty: int.parse(_qtyCtrl.text),
+                                      hargaEstimasi: double.tryParse(_hargaEstimasiCtrl.text) ?? 0,
+                                    );
+                                  }
+                                  _batalkanEdit(); 
                                 } catch (e) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Gagal Masuk Draft:\n${e.toString().replaceAll('Exception: ', '')}'), 
-                                      backgroundColor: Colors.red,
-                                      duration: const Duration(seconds: 4),
-                                    )
+                                    SnackBar(content: Text('Gagal Masuk Draft:\n${e.toString().replaceAll('Exception: ', '')}'), backgroundColor: Colors.red, duration: const Duration(seconds: 4))
                                   );
                                 }
-                              } else if (_selectedBarang == null || _selectedMobil == null || _selectedToko == null) {
-                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih Mobil, Barang, dan Toko!'), backgroundColor: Colors.orange));
+                              } else {
+                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih Mobil, Barang, dan Toko secara lengkap!'), backgroundColor: Colors.red));
                               }
                             },
-                            icon: const Icon(Icons.add_shopping_cart, size: 20),
-                            label: const Text('Masukan Ke Daftar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            icon: Icon(_editingIdDetail != null ? Icons.save : Icons.add_shopping_cart, size: 20),
+                            label: Text(_editingIdDetail != null ? 'Simpan Perubahan Item' : 'Masukan Ke Daftar Belanja', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                           )
                         ],
                       ),
@@ -611,7 +666,12 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 15, offset: const Offset(0, 8))]),
+                    decoration: BoxDecoration(
+                      color: _editingIdDetail == idDetail ? Colors.orange.shade50 : Colors.white, 
+                      borderRadius: BorderRadius.circular(20), 
+                      border: Border.all(color: _editingIdDetail == idDetail ? Colors.orange.shade300 : Colors.transparent, width: 2),
+                      boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 15, offset: const Offset(0, 8))]
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
@@ -624,7 +684,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                               Row(
                                 children: [
                                   InkWell(
-                                    onTap: () => _editQtyDraft(context, idDetail, currentQty, namaBarang),
+                                    onTap: () => _tarikDataKeForm(item, allMobil, tokoList),
                                     borderRadius: BorderRadius.circular(8),
                                     child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)), child: Icon(Icons.edit, color: Colors.blue.shade600, size: 20)),
                                   ),
@@ -653,26 +713,39 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                           const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider(height: 1, thickness: 1)),
                           
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
                                 flex: 3,
-                                child: TextFormField(
-                                  controller: _hargaRiilControllers[idDetail], keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(labelText: 'Harga Riil (Rp)', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
-                                  onChanged: (value) => setState(() {}), 
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildExternalLabel('Harga Riil (Rp)'),
+                                    TextFormField(
+                                      controller: _hargaRiilControllers[idDetail], keyboardType: TextInputType.number,
+                                      decoration: InputDecoration(hintText: 'Isi harga akhir', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+                                      onChanged: (value) => setState(() {}), 
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 flex: 2,
-                                child: DropdownButtonFormField<String>(
-                                  value: _statusPembayaranMap[idDetail],
-                                  decoration: InputDecoration(labelText: 'Pembayaran', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
-                                  items: const [
-                                    DropdownMenuItem(value: 'SELESAI', child: Text('CASH', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green))),
-                                    DropdownMenuItem(value: 'PENDING', child: Text('HUTANG', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orange))),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildExternalLabel('Pembayaran'),
+                                    DropdownButtonFormField<String>(
+                                      value: _statusPembayaranMap[idDetail],
+                                      decoration: InputDecoration(filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+                                      items: const [
+                                        DropdownMenuItem(value: 'SELESAI', child: Text('CASH', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green))),
+                                        DropdownMenuItem(value: 'PENDING', child: Text('HUTANG', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orange))),
+                                      ],
+                                      onChanged: (v) => setState(() => _statusPembayaranMap[idDetail] = v!),
+                                    ),
                                   ],
-                                  onChanged: (v) => setState(() => _statusPembayaranMap[idDetail] = v!),
                                 ),
                               ),
                             ],
@@ -774,42 +847,24 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   // ============================================================================
   // SHORTCUT MODALS (BOTTOM SHEETS)
   // ============================================================================
-  
   void _showAddBarangShortcut(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => const _ShortcutBarangFormSheet(),
-    );
+    showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (ctx) => const _ShortcutBarangFormSheet());
   }
 
   void _showAddMobilShortcut(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => const _ShortcutMobilFormSheet(),
-    );
+    showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (ctx) => const _ShortcutMobilFormSheet());
   }
 
   void _showAddTokoShortcut(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => const _ShortcutTokoFormSheet(),
-    );
+    showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (ctx) => const _ShortcutTokoFormSheet());
   }
 }
 
 // ============================================================================
 // WIDGET KELAS KHUSUS UNTUK FORM BOTTOM SHEET
 // ============================================================================
-
 class _ShortcutBarangFormSheet extends ConsumerStatefulWidget {
   const _ShortcutBarangFormSheet();
-
   @override
   ConsumerState<_ShortcutBarangFormSheet> createState() => _ShortcutBarangFormSheetState();
 }
@@ -827,11 +882,7 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
   int? _filterKatMobilDiForm;
 
   @override
-  void dispose() {
-    _namaCtrl.dispose();
-    _stockCtrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _namaCtrl.dispose(); _stockCtrl.dispose(); super.dispose(); }
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
@@ -839,15 +890,8 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih kategori terlebih dahulu!'), backgroundColor: Colors.red));
       return;
     }
-
     setState(() => _isSubmitting = true);
-
-    final newBarang = BarangModel(
-      namaBarang: _namaCtrl.text.trim(),
-      idKategori: _selectedKategori!.idKategori,
-      stock: int.tryParse(_stockCtrl.text.trim()) ?? 0,
-    );
-
+    final newBarang = BarangModel(namaBarang: _namaCtrl.text.trim(), idKategori: _selectedKategori!.idKategori, stock: int.tryParse(_stockCtrl.text.trim()) ?? 0);
     try {
       await ref.read(barangControllerProvider.notifier).addBarang(newBarang, listIdMobilCocok: _selectedMobilIds);
       if (mounted) Navigator.pop(context);
@@ -855,6 +899,13 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  Widget _buildExternalLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade800, fontSize: 13)),
+    );
   }
 
   @override
@@ -877,18 +928,20 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _buildExternalLabel('Nama Barang'),
                     TextFormField(
                       controller: _namaCtrl, textCapitalization: TextCapitalization.words,
-                      decoration: InputDecoration(labelText: 'Nama Barang', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                      decoration: InputDecoration(hintText: 'Ketik nama barang', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
                       validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
                     ),
                     const SizedBox(height: 16),
+                    _buildExternalLabel('Kategori'),
                     ref.watch(kategoriBarangProvider).when(
                       data: (listKategori) => DropdownButtonFormField<KategoriModel>(
                         value: _selectedKategori,
-                        decoration: InputDecoration(labelText: 'Kategori', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                        decoration: InputDecoration(hintText: 'Pilih Kategori', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
                         items: listKategori.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori))).toList(),
                         onChanged: (val) => setState(() => _selectedKategori = val),
                         validator: (val) => val == null ? 'Pilih kategori' : null,
@@ -897,9 +950,10 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
                       error: (err, _) => Text('Error: $err', style: const TextStyle(color: Colors.red)),
                     ),
                     const SizedBox(height: 16),
+                    _buildExternalLabel('Stok Awal'),
                     TextFormField(
                       controller: _stockCtrl, keyboardType: TextInputType.number,
-                      decoration: InputDecoration(labelText: 'Stok Awal', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                      decoration: InputDecoration(hintText: '0', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
                     ),
                     const SizedBox(height: 32),
                     
@@ -912,12 +966,7 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
                           flex: 2,
                           child: TextField(
                             onChanged: (val) => setState(() => _searchMobilQuery = val),
-                            decoration: InputDecoration(
-                              hintText: 'Cari Plat...',
-                              prefixIcon: const Icon(Icons.search, size: 18),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
+                            decoration: InputDecoration(hintText: 'Cari Plat...', prefixIcon: const Icon(Icons.search, size: 18), contentPadding: const EdgeInsets.symmetric(horizontal: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -926,7 +975,7 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
                           child: ref.watch(kategoriMobilProvider).when(
                             data: (kategoriList) => DropdownButtonFormField<int?>(
                               value: _filterKatMobilDiForm,
-                              decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
+                              decoration: InputDecoration(hintText: 'Semua Mobil', contentPadding: const EdgeInsets.symmetric(horizontal: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
                               isExpanded: true,
                               items: [
                                 const DropdownMenuItem(value: null, child: Text('Semua Mobil')),
@@ -967,11 +1016,8 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
                                 activeColor: const Color(0xFF1E3A5F),
                                 onChanged: (bool? value) {
                                   setState(() {
-                                    if (value == true) {
-                                      _selectedMobilIds.add(mobil.idMobil!);
-                                    } else {
-                                      _selectedMobilIds.remove(mobil.idMobil);
-                                    }
+                                    if (value == true) _selectedMobilIds.add(mobil.idMobil!);
+                                    else _selectedMobilIds.remove(mobil.idMobil);
                                   });
                                 },
                               );
@@ -1005,7 +1051,6 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
 
 class _ShortcutMobilFormSheet extends ConsumerStatefulWidget {
   const _ShortcutMobilFormSheet();
-
   @override
   ConsumerState<_ShortcutMobilFormSheet> createState() => _ShortcutMobilFormSheetState();
 }
@@ -1018,31 +1063,26 @@ class _ShortcutMobilFormSheetState extends ConsumerState<_ShortcutMobilFormSheet
   bool _isSubmitting = false;
 
   @override
-  void dispose() {
-    _platCtrl.dispose();
-    _tahunCtrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _platCtrl.dispose(); _tahunCtrl.dispose(); super.dispose(); }
 
   Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate() || _selectedKategori == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lengkapi form dengan benar!'), backgroundColor: Colors.red));
-      return;
-    }
+    if (!_formKey.currentState!.validate() || _selectedKategori == null) return;
     setState(() => _isSubmitting = true);
-    
     try {
-      final newMobil = MobilModel(
-        noPlat: _platCtrl.text.trim().toUpperCase(), 
-        idKategori: _selectedKategori!.idKategori, 
-        tahun: int.parse(_tahunCtrl.text)
-      );
+      final newMobil = MobilModel(noPlat: _platCtrl.text.trim().toUpperCase(), idKategori: _selectedKategori!.idKategori, tahun: int.parse(_tahunCtrl.text));
       await ref.read(mobilControllerProvider.notifier).addMobil(newMobil);
       if (mounted) Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  Widget _buildExternalLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade800, fontSize: 13)),
+    );
   }
 
   @override
@@ -1058,45 +1098,32 @@ class _ShortcutMobilFormSheetState extends ConsumerState<_ShortcutMobilFormSheet
           Center(child: Container(width: 48, height: 5, margin: const EdgeInsets.only(bottom: 24), decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
           const Text('Tambah Mobil Baru', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 24),
-          
           Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextFormField(
-                  controller: _platCtrl, textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(labelText: 'No Plat', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)), 
-                  validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
-                ),
+                _buildExternalLabel('No Plat'),
+                TextFormField(controller: _platCtrl, textCapitalization: TextCapitalization.characters, decoration: InputDecoration(hintText: 'Misal: B 1234 CD', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)), validator: (v) => v!.isEmpty ? 'Wajib diisi' : null),
                 const SizedBox(height: 16),
+                _buildExternalLabel('Kategori Mobil'),
                 ref.watch(kategoriMobilProvider).when(
                   data: (kategoriList) => DropdownButtonFormField<KategoriModel>(
-                    value: _selectedKategori,
-                    decoration: InputDecoration(labelText: 'Kategori Mobil', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                    value: _selectedKategori, decoration: InputDecoration(hintText: 'Pilih Kategori', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
                     items: kategoriList.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori))).toList(),
-                    onChanged: (v) => setState(() => _selectedKategori = v),
-                    validator: (v) => v == null ? 'Pilih kategori' : null,
+                    onChanged: (v) => setState(() => _selectedKategori = v), validator: (v) => v == null ? 'Pilih kategori' : null,
                   ),
-                  loading: () => const CircularProgressIndicator(),
-                  error: (_, __) => const Text('Gagal muat kategori'),
+                  loading: () => const CircularProgressIndicator(), error: (_, __) => const Text('Gagal muat kategori'),
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _tahunCtrl, keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: 'Tahun Armada', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                  validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
-                ),
+                _buildExternalLabel('Tahun Armada'),
+                TextFormField(controller: _tahunCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(hintText: 'Misal: 2020', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)), validator: (v) => v!.isEmpty ? 'Wajib diisi' : null),
               ],
             ),
           ),
-          
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
-            child: FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-              onPressed: _isSubmitting ? null : _submitForm,
-              child: _isSubmitting ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) : const Text('Simpan Mobil', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
+            child: FilledButton(style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), onPressed: _isSubmitting ? null : _submitForm, child: _isSubmitting ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) : const Text('Simpan Mobil', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
           ),
         ],
       ),
@@ -1106,7 +1133,6 @@ class _ShortcutMobilFormSheetState extends ConsumerState<_ShortcutMobilFormSheet
 
 class _ShortcutTokoFormSheet extends ConsumerStatefulWidget {
   const _ShortcutTokoFormSheet();
-
   @override
   ConsumerState<_ShortcutTokoFormSheet> createState() => _ShortcutTokoFormSheetState();
 }
@@ -1119,17 +1145,11 @@ class _ShortcutTokoFormSheetState extends ConsumerState<_ShortcutTokoFormSheet> 
   bool _isSubmitting = false;
 
   @override
-  void dispose() {
-    _namaCtrl.dispose();
-    _telponCtrl.dispose();
-    _alamatCtrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _namaCtrl.dispose(); _telponCtrl.dispose(); _alamatCtrl.dispose(); super.dispose(); }
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
-    
     try {
       final newToko = TokoModel(namaToko: _namaCtrl.text.trim(), noTelp: _telponCtrl.text.trim(), alamat: _alamatCtrl.text.trim());
       await ref.read(tokoControllerProvider.notifier).addToko(newToko);
@@ -1140,10 +1160,16 @@ class _ShortcutTokoFormSheetState extends ConsumerState<_ShortcutTokoFormSheet> 
     }
   }
 
+  Widget _buildExternalLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade800, fontSize: 13)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final primaryColor = const Color(0xFF1E3A5F);
-    
     return Container(
       decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 12),
@@ -1153,37 +1179,25 @@ class _ShortcutTokoFormSheetState extends ConsumerState<_ShortcutTokoFormSheet> 
           Center(child: Container(width: 48, height: 5, margin: const EdgeInsets.only(bottom: 24), decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
           const Text('Tambah Toko Baru', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 24),
-          
           Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextFormField(
-                  controller: _namaCtrl, textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(labelText: 'Nama Toko', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                  validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
-                ),
+                _buildExternalLabel('Nama Toko'),
+                TextFormField(controller: _namaCtrl, textCapitalization: TextCapitalization.words, decoration: InputDecoration(hintText: 'Ketik nama toko', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)), validator: (v) => v!.isEmpty ? 'Wajib diisi' : null),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _telponCtrl, keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(labelText: 'No Telp', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                ),
+                _buildExternalLabel('No Telp (Opsional)'),
+                TextFormField(controller: _telponCtrl, keyboardType: TextInputType.phone, decoration: InputDecoration(hintText: 'Misal: 0812...', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _alamatCtrl, textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(labelText: 'Alamat', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                ),
+                _buildExternalLabel('Alamat Lengkap'),
+                TextFormField(controller: _alamatCtrl, textCapitalization: TextCapitalization.words, decoration: InputDecoration(hintText: 'Alamat toko...', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
               ],
             ),
           ),
-          
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
-            child: FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-              onPressed: _isSubmitting ? null : _submitForm,
-              child: _isSubmitting ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) : const Text('Simpan Toko', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
+            child: FilledButton(style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), onPressed: _isSubmitting ? null : _submitForm, child: _isSubmitting ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) : const Text('Simpan Toko', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
           ),
         ],
       ),
