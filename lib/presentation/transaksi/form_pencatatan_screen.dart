@@ -110,14 +110,17 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     }
   }
 
-  void _batalkanEdit() {
+  void _resetForm() {
     setState(() {
       _editingIdDetail = null;
       _qtyCtrl.clear();
       _hargaEstimasiCtrl.clear();
-      _selectedBarang = null;
+      _selectedKategoriMobil = null;
       _selectedMobil = null;
+      _selectedKategoriBarang = null;
+      _selectedBarang = null;
       _selectedToko = null;
+      _barangSesuaiMobilList.clear();
     });
   }
 
@@ -426,7 +429,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                       const Padding(padding: EdgeInsets.only(bottom: 12, left: 4), child: Text('1. Rencana Belanja', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87))),
                       if (_editingIdDetail != null)
                         TextButton.icon(
-                          onPressed: _batalkanEdit,
+                          onPressed: _resetForm,
                           icon: const Icon(Icons.cancel, size: 16, color: Colors.red),
                           label: const Text('Batal Edit', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
                         )
@@ -616,7 +619,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                       hargaEstimasi: double.tryParse(_hargaEstimasiCtrl.text) ?? 0,
                                     );
                                   }
-                                  _batalkanEdit(); 
+                                  _resetForm(); 
                                 } catch (e) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text('Gagal Masuk Draft:\n${e.toString().replaceAll('Exception: ', '')}'), backgroundColor: Colors.red, duration: const Duration(seconds: 4))
