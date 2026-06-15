@@ -47,6 +47,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   final _hargaEstimasiCtrl = TextEditingController();
 
   int? _editingIdDetail;
+  bool get _isEditing => _editingIdDetail != null;
 
   final Map<int, TextEditingController> _hargaRiilControllers = {};
   final Map<int, String> _statusPembayaranMap = {};
@@ -729,6 +730,29 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
+                  if (_isEditing)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.shade300),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.lock_outline, color: Colors.orange),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Realisasi dikunci sementara. Simpan atau batalkan edit untuk melanjutkan.',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
                   const Padding(padding: EdgeInsets.only(bottom: 12, left: 4), child: Text('2. Realisasi Lapangan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87))),
                   
                   if (draftState.items.isEmpty)
@@ -779,13 +803,19 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                               Row(
                                 children: [
                                   InkWell(
-                                    onTap: () => _tarikDataKeForm(item, allMobil, tokoList),
+                                    onTap: _isEditing
+                                          ? null
+                                          : () => _tarikDataKeForm(item, allMobil, tokoList),
                                     borderRadius: BorderRadius.circular(8),
                                     child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)), child: Icon(Icons.edit, color: Colors.blue.shade600, size: 20)),
                                   ),
                                   const SizedBox(width: 8),
                                   InkWell(
-                                    onTap: () => ref.read(transaksiDraftProvider.notifier).hapusItemDariDraft(idDetail),
+                                    onTap: _isEditing
+                                          ? null
+                                          : () => ref
+                                                .read(transaksiDraftProvider.notifier)
+                                                .hapusItemDariDraft(idDetail),
                                     borderRadius: BorderRadius.circular(8),
                                     child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)), child: Icon(Icons.delete_outline, color: Colors.red.shade600, size: 20)),
                                   ),
@@ -817,7 +847,10 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                   children: [
                                     _buildExternalLabel('Harga Riil (Rp)'),
                                     TextFormField(
-                                      controller: _hargaRiilControllers[idDetail], keyboardType: TextInputType.number,
+                                      controller: _hargaRiilControllers[idDetail],
+                                      keyboardType: TextInputType.number,
+                                      readOnly: _isEditing,
+                                      enabled: !_isEditing,
                                       decoration: InputDecoration(hintText: 'Isi harga akhir', filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
                                       onChanged: (value) => setState(() {}), 
                                     ),
@@ -838,7 +871,11 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                         DropdownMenuItem(value: 'SELESAI', child: Text('CASH', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green))),
                                         DropdownMenuItem(value: 'PENDING', child: Text('HUTANG', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orange))),
                                       ],
-                                      onChanged: (v) => setState(() => _statusPembayaranMap[idDetail] = v!),
+                                      onChanged: _isEditing
+                                        ? null
+                                        : (v) => setState(() {
+                                              _statusPembayaranMap[idDetail] = v!;
+                                            }),
                                     ),
                                   ],
                                 ),
@@ -848,30 +885,35 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                           
                           if (isHutang) ...[
                             const SizedBox(height: 12),
-                            InkWell(
-                              onTap: () => _pilihTanggalJatuhTempo(context, idDetail),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.orange.shade200)),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.calendar_month_rounded, color: Colors.orange.shade800, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('Tanggal Jatuh Tempo', style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.bold)),
-                                          Text(
-                                            _jatuhTempoMap[idDetail] != null ? DateFormat('dd-MM-yyyy').format(_jatuhTempoMap[idDetail]!) : 'Pilih Tanggal Pelunasan',
-                                            style: TextStyle(fontSize: 14, color: Colors.orange.shade900, fontWeight: FontWeight.w600),
-                                          ),
-                                        ],
+                            Opacity(
+                              opacity: _isEditing ? 0.5 : 1,
+                              child: InkWell(
+                                onTap: _isEditing
+                                    ? null
+                                    : () => _pilihTanggalJatuhTempo(context, idDetail),
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.orange.shade200)),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.calendar_month_rounded, color: Colors.orange.shade800, size: 20),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Tanggal Jatuh Tempo', style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.bold)),
+                                            Text(
+                                              _jatuhTempoMap[idDetail] != null ? DateFormat('dd-MM-yyyy').format(_jatuhTempoMap[idDetail]!) : 'Pilih Tanggal Pelunasan',
+                                              style: TextStyle(fontSize: 14, color: Colors.orange.shade900, fontWeight: FontWeight.w600),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    Icon(Icons.arrow_drop_down, color: Colors.orange.shade800),
-                                  ],
+                                      Icon(Icons.arrow_drop_down, color: Colors.orange.shade800),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -889,7 +931,9 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                     backgroundColor: _kwitansiBytesMap.containsKey(idDetail) ? Colors.green.shade50 : Colors.transparent,
                                     minimumSize: const Size(0, 48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
-                                  onPressed: () => _showImageSourceOptions(context, idDetail),
+                                  onPressed: _isEditing
+                                    ? null
+                                    : () => _showImageSourceOptions(context, idDetail),
                                   icon: Icon(_kwitansiBytesMap.containsKey(idDetail) ? Icons.check_circle : Icons.camera_alt, size: 20),
                                   label: Text(_kwitansiBytesMap.containsKey(idDetail) ? 'Kwitansi Terunggah' : 'Upload Kwitansi', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                 ),
