@@ -40,9 +40,10 @@ final cetakRawDataProvider = FutureProvider.autoDispose<List<RiwayatTransaksi>>(
         qty,
         harga_pembelian_barang,
         status,
-        barang (nama_barang, kategori),
+        barang (nama_barang, kategori_barang(nama_kategori)),
         toko (nama_toko),
-        mobil (no_plat, kategori),
+        mobil (no_plat, kategori_mobil(nama_kategori)),
+        kwitansi (img_url),
         pencatatan!inner (
           id_pencatatan,
           tgl_pencatatan,
@@ -71,15 +72,19 @@ final cetakRawDataProvider = FutureProvider.autoDispose<List<RiwayatTransaksi>>(
         idNota: pencatatan['id_pencatatan'] as int? ?? 0,
         tanggal: DateTime.parse(pencatatan['tgl_pencatatan']),
         namaBarang: row['barang']?['nama_barang'] ?? 'Barang Terhapus',
-        kategoriBarang: row['barang']?['kategori'] ?? '-',
+        // PERBAIKAN: Mapping data kategori dari relasi baru
+        kategoriBarang: row['barang']?['kategori_barang']?['nama_kategori'] ?? '-',
         namaToko: row['toko']?['nama_toko'] ?? '-',
         nopolMobil: row['mobil']?['no_plat'] ?? '-',
-        kategoriMobil: row['mobil']?['kategori'] ?? '-',
+        // PERBAIKAN: Mapping data kategori dari relasi baru
+        kategoriMobil: row['mobil']?['kategori_mobil']?['nama_kategori'] ?? '-',
         namaPetugas: pencatatan['users']?['nama_user'] ?? 'Sistem',
         qty: qty,
         harga: harga,
         subtotal: qty * harga,
         status: row['status'] ?? 'PENDING',
+        // PERBAIKAN: Menambahkan kwitansi agar sesuai dengan model RiwayatTransaksi terbaru
+        imgKwitansi: row['kwitansi']?['img_url'], 
       ),
     );
   }
