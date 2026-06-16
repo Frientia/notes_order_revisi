@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/mobil_model.dart';
 import '../../data/models/kategori_model.dart';
 import '../../domain/providers/mobil_provider.dart';
-import '../../domain/providers/kategori_provider.dart'; // Import Provider Kategori
+import '../../domain/providers/kategori_provider.dart';
 
 class MobilScreen extends ConsumerStatefulWidget {
   const MobilScreen({super.key});
@@ -58,7 +58,6 @@ class _MobilScreenState extends ConsumerState<MobilScreen> {
               final filteredList = listMobil.where((mobil) {
                 final query = _searchQuery.toLowerCase();
                 final platMatch = mobil.noPlat.toLowerCase().contains(query);
-                // Sesuaikan pemanggilan kategori dengan model yang baru
                 final kategoriMatch = mobil.kategori?.namaKategori.toLowerCase().contains(query) ?? false;
                 return platMatch || kategoriMatch;
               }).toList();
@@ -189,7 +188,6 @@ class _MobilListItem extends ConsumerWidget {
                 children: [
                   Text(mobil.noPlat, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
                   const SizedBox(height: 4),
-                  // Mengambil nama kategori dari relasi Join Supabase
                   Text(mobil.kategori?.namaKategori ?? 'Belum ada kategori', style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   Container(
@@ -282,7 +280,7 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
   late final TextEditingController _platCtrl;
   late final TextEditingController _tahunCtrl;
   
-  KategoriModel? _selectedKategori; // UBAH: Menggunakan KategoriModel
+  KategoriModel? _selectedKategori; 
   bool _isSubmitting = false;
 
   @override
@@ -303,7 +301,7 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedKategori == null) {
-      _showErrorSnackBar('Pilih kategori terlebih dahulu!');
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih kategori terlebih dahulu!'), backgroundColor: Colors.red));
       return;
     }
 
@@ -312,7 +310,7 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
     final newMobil = MobilModel(
       idMobil: widget.mobil?.idMobil,
       noPlat: _platCtrl.text.trim().toUpperCase(),
-      idKategori: _selectedKategori!.idKategori, // Mengambil ID dari objek Kategori
+      idKategori: _selectedKategori!.idKategori,
       tahun: int.tryParse(_tahunCtrl.text.trim()),
     );
 
@@ -324,15 +322,15 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      _showErrorSnackBar(e.toString());
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  void _showErrorSnackBar(String errorMessage) {
-    final sanitizedMessage = errorMessage.replaceAll('Exception: ', '');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(sanitizedMessage), backgroundColor: Colors.red),
+  Widget _buildExternalLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade800, fontSize: 13)),
     );
   }
 
@@ -372,25 +370,65 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
               ),
               const SizedBox(height: 24),
-              _buildTextField(
+              
+              _buildExternalLabel('No Plat (Contoh: B 1234 CD)'),
+              TextFormField(
                 controller: _platCtrl,
-                label: 'No. Plat (Contoh: B 1234 CD)',
                 textCapitalization: TextCapitalization.characters,
-                validator: (val) => val!.isEmpty ? 'No. Plat wajib diisi' : null,
+                decoration: InputDecoration(
+                  hintText: 'Masukkan No Plat',
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) return 'No. Plat wajib diisi';
+                  
+                  final inputPlat = val.trim().toUpperCase().replaceAll(' ', '');
+                  final allMobil = ref.read(mobilControllerProvider).valueOrNull ?? [];
+                  
+                  bool isDuplicate = allMobil.any((m) => 
+                    m.idMobil != widget.mobil?.idMobil && 
+                    m.noPlat.replaceAll(' ', '').toUpperCase() == inputPlat
+                  );
+                  
+                  if (isDuplicate) return 'Mobil sudah terdaftar! Jangan gunakan plat yang sama.';
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               
-              // Widget Dropdown Kategori + Tombol Quick Add
+              _buildExternalLabel('Kategori Mobil'),
               _buildKategoriDropdown(primaryColor),
               
               const SizedBox(height: 16),
-              _buildTextField(
+              _buildExternalLabel('Tahun Kendaraan (Opsional)'),
+              TextFormField(
                 controller: _tahunCtrl,
-                label: 'Tahun Kendaraan (Opsional)',
                 keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: 'Misal: 2020',
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                ),
               ),
               const SizedBox(height: 32),
-              _buildSubmitButton(isEdit, primaryColor),
+              
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(54),
+                  backgroundColor: primaryColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                onPressed: _isSubmitting ? null : _submitForm,
+                child: _isSubmitting
+                    ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                    : Text(isEdit ? 'Simpan Perubahan' : 'Simpan Mobil', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
               const SizedBox(height: 24),
             ],
           ),
@@ -399,9 +437,7 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
     );
   }
 
-  // === REVISI: DROPDOWN KATEGORI MENGGUNAKAN RIVERPOD ===
   Widget _buildKategoriDropdown(Color primaryColor) {
-    // Memantau data dari tabel kategori_mobil
     final kategoriAsync = ref.watch(kategoriMobilProvider);
 
     return Row(
@@ -412,8 +448,8 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
               return DropdownButtonFormField<KategoriModel>(
                 value: _selectedKategori,
                 decoration: InputDecoration(
-                  labelText: 'Kategori',
-                  labelStyle: TextStyle(color: Colors.grey.shade600),
+                  hintText: 'Pilih Kategori',
+                  hintStyle: TextStyle(color: Colors.grey.shade400),
                   filled: true,
                   fillColor: Colors.grey.shade50,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -433,7 +469,6 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
           ),
         ),
         const SizedBox(width: 8),
-        // Tombol Quick Add Kategori
         InkWell(
           onTap: () => _tambahKategoriBaru(context),
           borderRadius: BorderRadius.circular(12),
@@ -448,7 +483,6 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
     );
   }
 
-  // Fungsi Dialog untuk Quick Add Kategori Mobil
   void _tambahKategoriBaru(BuildContext context) {
     final txtKategori = TextEditingController();
     showDialog(
@@ -466,11 +500,9 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
             onPressed: () async {
               if (txtKategori.text.trim().isEmpty) return;
               try {
-                // Simpan ke DB lewat repository
                 final repo = ref.read(kategoriRepositoryProvider);
                 await repo.addKategori('kategori_mobil', txtKategori.text.trim());
                 
-                // Refresh provider agar dropdown terupdate
                 ref.invalidate(kategoriMobilProvider);
                 
                 if (mounted) {
@@ -487,51 +519,6 @@ class _MobilFormSheetState extends ConsumerState<_MobilFormSheet> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    String? Function(String?)? validator,
-    TextInputType? keyboardType,
-    TextCapitalization textCapitalization = TextCapitalization.none,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      textCapitalization: textCapitalization,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: Colors.grey.shade600),
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      ),
-      validator: validator,
-    );
-  }
-
-  Widget _buildSubmitButton(bool isEdit, Color primaryColor) {
-    return FilledButton(
-      style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(54),
-        backgroundColor: primaryColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        elevation: 0,
-      ),
-      onPressed: _isSubmitting ? null : _submitForm,
-      child: _isSubmitting
-          ? const SizedBox(
-              height: 24,
-              width: 24,
-              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-            )
-          : Text(
-              isEdit ? 'Simpan Perubahan' : 'Simpan Mobil',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-            ),
     );
   }
 }

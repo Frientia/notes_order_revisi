@@ -445,7 +445,9 @@ void _tampilDetailMobil(BuildContext context, BarangModel barang) {
 
 void _showFormBottomSheet(BuildContext context, {BarangModel? barang}) {
   showModalBottomSheet(
-    context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
     builder: (ctx) => _BarangFormSheet(barang: barang),
   );
 }
@@ -542,14 +544,34 @@ class _BarangFormSheetState extends ConsumerState<_BarangFormSheet> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     TextFormField(
-                      controller: _namaCtrl, textCapitalization: TextCapitalization.words,
-                      decoration: InputDecoration(labelText: 'Nama Barang', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                      validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
+                      controller: _namaCtrl,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: InputDecoration(
+                        labelText: 'Nama Barang',
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'Wajib diisi';
+                        
+                        final inputNama = val.trim().toLowerCase();
+                        final allBarang = ref.read(barangControllerProvider).valueOrNull ?? [];
+                        
+                        bool isDuplicate = allBarang.any((b) => 
+                          b.idBarang != widget.barang?.idBarang && 
+                          b.namaBarang.trim().toLowerCase() == inputNama
+                        );
+                        
+                        if (isDuplicate) return 'Barang sudah terdaftar! Gunakan nama lain.';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     _buildKategoriDropdown(primaryColor),
                     const SizedBox(height: 16),
                     TextFormField(
+                      readOnly: true,
                       controller: _stockCtrl, keyboardType: TextInputType.number,
                       decoration: InputDecoration(labelText: 'Stok Awal', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
                     ),
@@ -635,8 +657,6 @@ class _BarangFormSheetState extends ConsumerState<_BarangFormSheet> {
           ),
         ),
         const SizedBox(width: 8),
-        const SizedBox(width: 8),
-        // Tombol Quick Add Kategori
         InkWell(
           onTap: () => _tambahKategoriBaru(context),
           borderRadius: BorderRadius.circular(12),
@@ -691,7 +711,6 @@ class _BarangFormSheetState extends ConsumerState<_BarangFormSheet> {
     );
   }
 
-  // Fungsi Dialog untuk Quick Add Kategori Mobil
   void _tambahKategoriBaru(BuildContext context) {
     final txtKategori = TextEditingController();
     showDialog(
@@ -709,11 +728,9 @@ class _BarangFormSheetState extends ConsumerState<_BarangFormSheet> {
             onPressed: () async {
               if (txtKategori.text.trim().isEmpty) return;
               try {
-                // Simpan ke DB lewat repository
                 final repo = ref.read(kategoriRepositoryProvider);
                 await repo.addKategori('kategori_barang', txtKategori.text.trim());
                 
-                // Refresh provider agar dropdown terupdate
                 ref.invalidate(kategoriBarangProvider);
                 
                 if (mounted) {

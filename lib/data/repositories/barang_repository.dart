@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/barang_model.dart';
+import '../models/mobil_model.dart';
 
 final barangRepositoryProvider = Provider<BarangRepository>((ref) {
   return BarangRepository(Supabase.instance.client);
@@ -35,6 +36,19 @@ class BarangRepository {
       return response.map((e) => BarangModel.fromJson(e)).toList();
     } catch (e) {
       throw Exception('Gagal memfilter barang: $e');
+    }
+  }
+
+  Future<List<MobilModel>> getMobilSesuaiBarang(int idBarang) async {
+    try {
+      final response = await _supabase
+          .from('mobil')
+          .select('*, kategori_mobil(*), barang_mobil!inner(*)') 
+          .eq('barang_mobil.id_barang', idBarang);
+          
+      return response.map((e) => MobilModel.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Gagal memuat relasi mobil: $e');
     }
   }
 

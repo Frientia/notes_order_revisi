@@ -349,6 +349,13 @@ class _TokoFormSheetState extends ConsumerState<_TokoFormSheet> {
     );
   }
 
+  Widget _buildExternalLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade800, fontSize: 13)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.toko != null;
@@ -384,28 +391,85 @@ class _TokoFormSheetState extends ConsumerState<_TokoFormSheet> {
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
             ),
             const SizedBox(height: 24),
-            _buildTextField(
+            
+            _buildExternalLabel('Nama Toko'),
+            TextFormField(
               controller: _namaTokoCtrl,
-              label: 'Nama Toko',
               textCapitalization: TextCapitalization.words,
-              validator: (val) => val!.isEmpty ? 'Nama toko wajib diisi' : null,
+              decoration: InputDecoration(
+                hintText: 'Masukkan Nama Toko',
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
+              validator: (val) {
+                if (val == null || val.trim().isEmpty) return 'Nama toko wajib diisi';
+                
+                final inputNama = val.trim().toLowerCase();
+                final allToko = ref.read(tokoControllerProvider).valueOrNull ?? [];
+                
+                bool isDuplicate = allToko.any((t) => 
+                  t.idToko != widget.toko?.idToko && 
+                  t.namaToko.trim().toLowerCase() == inputNama
+                );
+                
+                if (isDuplicate) return 'Toko sudah terdaftar! Jangan gunakan nama yang sama.';
+                return null;
+              },
             ),
             const SizedBox(height: 16),
-            _buildTextField(
+            
+            _buildExternalLabel('Nomor Telepon'),
+            TextFormField(
               controller: _telponCtrl,
-              label: 'Nomor Telepon',
               keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                hintText: 'Misal: 08123456789',
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
               validator: _validatePhone,
             ),
             const SizedBox(height: 16),
-            _buildTextField(
+            
+            _buildExternalLabel('Alamat Lengkap'),
+            TextFormField(
               controller: _alamatCtrl,
-              label: 'Alamat Lengkap',
+              textCapitalization: TextCapitalization.words,
               maxLines: 3,
-              validator: (val) => val!.isEmpty ? 'Alamat wajib diisi' : null,
+              decoration: InputDecoration(
+                hintText: 'Ketik alamat lengkap toko...',
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
+              validator: (val) => val == null || val.trim().isEmpty ? 'Alamat wajib diisi' : null,
             ),
             const SizedBox(height: 32),
-            _buildSubmitButton(isEdit, primaryColor),
+            
+            FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(54),
+                backgroundColor: primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+              onPressed: _isSubmitting ? null : _submitForm,
+              child: _isSubmitting
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                    )
+                  : Text(
+                      isEdit ? 'Simpan Perubahan' : 'Simpan Toko',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+            ),
             const SizedBox(height: 24),
           ],
         ),
@@ -413,57 +477,9 @@ class _TokoFormSheetState extends ConsumerState<_TokoFormSheet> {
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    String? Function(String?)? validator,
-    TextInputType? keyboardType,
-    TextCapitalization textCapitalization = TextCapitalization.none,
-    int maxLines = 1,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      textCapitalization: textCapitalization,
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: Colors.grey.shade600),
-        alignLabelWithHint: maxLines > 1,
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      ),
-      validator: validator,
-    );
-  }
-
   String? _validatePhone(String? val) {
-    if (val == null || val.isEmpty) return 'Nomor telepon wajib diisi';
-    if (!RegExp(r'^[0-9]+$').hasMatch(val)) return 'Hanya boleh berisi angka';
+    if (val == null || val.trim().isEmpty) return 'Nomor telepon wajib diisi';
+    if (!RegExp(r'^[0-9]+$').hasMatch(val.trim())) return 'Hanya boleh berisi angka';
     return null;
-  }
-
-  Widget _buildSubmitButton(bool isEdit, Color primaryColor) {
-    return FilledButton(
-      style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(54),
-        backgroundColor: primaryColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        elevation: 0,
-      ),
-      onPressed: _isSubmitting ? null : _submitForm,
-      child: _isSubmitting
-          ? const SizedBox(
-              height: 24,
-              width: 24,
-              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-            )
-          : Text(
-              isEdit ? 'Simpan Perubahan' : 'Simpan Toko',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-    );
   }
 }

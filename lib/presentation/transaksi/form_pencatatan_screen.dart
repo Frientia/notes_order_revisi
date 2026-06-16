@@ -29,9 +29,6 @@ class FormPencatatanScreen extends ConsumerStatefulWidget {
 class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   final _formItemKey = GlobalKey<FormState>();
 
-  // ==========================================
-  // STATE FILTER & MASTER DATA
-  // ==========================================
   KategoriModel? _selectedKategoriMobil;
   MobilModel? _selectedMobil;
   
@@ -78,67 +75,54 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     try {
       final repo = ref.read(barangRepositoryProvider);
       final hasil = await repo.getBarangSesuaiMobil(idMobil);
-      setState(() {
-        _barangSesuaiMobilList = hasil;
-      });
+      if (mounted) {
+        setState(() {
+          _barangSesuaiMobilList = hasil;
+        });
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memfilter barang: $e')));
     } finally {
-      setState(() => _isLoadingBarang = false);
+      if (mounted) setState(() => _isLoadingBarang = false);
     }
   }
 
- Future<void> _tarikDataKeForm(
-  Map<String, dynamic> item,
-  List<MobilModel> allMobil,
-  List<TokoModel> allToko,
-) async {
-  final mobilId = item['id_mobil'];
-  final tokoId = item['id_toko'];
-  final barangId = item['id_barang'];
-
-  setState(() {
-    _editingIdDetail = item['id_detail_pencatatan'];
-
-    _qtyCtrl.text = item['qty']?.toString() ?? '';
-
-    _hargaEstimasiCtrl.text =
-        item['harga_pembelian_barang'] == null ||
-                item['harga_pembelian_barang'].toString() == '0.0'
-            ? ''
-            : item['harga_pembelian_barang'].toString();
-
-    _selectedMobil = allMobil
-        .where((m) => m.idMobil == mobilId)
-        .firstOrNull;
-
-    _selectedToko = allToko
-        .where((t) => t.idToko.toString() == tokoId.toString())
-        .firstOrNull;
-  });
-
-  if (_selectedMobil?.idMobil != null) {
-    await _fetchBarangSesuaiMobil(_selectedMobil!.idMobil!);
+  Future<void> _tarikDataKeForm(
+    Map<String, dynamic> item,
+    List<MobilModel> allMobil,
+    List<TokoModel> allToko,
+  ) async {
+    final mobilId = item['id_mobil'];
+    final tokoId = item['id_toko'];
+    final barangId = item['id_barang'];
 
     setState(() {
-      _selectedBarang = _barangSesuaiMobilList
-          .where((b) => b.idBarang == barangId)
-          .firstOrNull;
+      _editingIdDetail = item['id_detail_pencatatan'];
+      _qtyCtrl.text = item['qty']?.toString() ?? '';
+      _hargaEstimasiCtrl.text = item['harga_pembelian_barang'] == null || item['harga_pembelian_barang'].toString() == '0.0' ? '' : item['harga_pembelian_barang'].toString();
+      _selectedMobil = allMobil.where((m) => m.idMobil == mobilId).firstOrNull;
+      _selectedToko = allToko.where((t) => t.idToko.toString() == tokoId.toString()).firstOrNull;
     });
-  }
 
-  if (!mounted) return;
+    if (_selectedMobil?.idMobil != null) {
+      await _fetchBarangSesuaiMobil(_selectedMobil!.idMobil!);
+      if (mounted) {
+        setState(() {
+          _selectedBarang = _barangSesuaiMobilList.where((b) => b.idBarang == barangId).firstOrNull;
+        });
+      }
+    }
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text(
-        'Mode Edit Aktif: Silakan ubah data di form atas.',
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Mode Edit Aktif: Silakan ubah data di form atas.'),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 2),
       ),
-      backgroundColor: Colors.orange,
-      duration: Duration(seconds: 2),
-    ),
-  );
-}
+    );
+  }
 
   void _resetForm() {
     setState(() {
@@ -256,25 +240,23 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     return total;
   }
 
- Future<void> _eksekusiSelesai(int idDraft, List<Map<String, dynamic>> items) async {
+  Future<void> _eksekusiSelesai(int idDraft, List<Map<String, dynamic>> items) async {
     for (var item in items) {
       final idDetail = item['id_detail_pencatatan'] as int;
       final hargaInput = double.tryParse(_hargaRiilControllers[idDetail]?.text ?? '0') ?? 0;
       final statusPembayaran = _statusPembayaranMap[idDetail] ?? 'SELESAI';
       
-      // 1. Validasi Harga (Mencegah 0 dan Minus)
       if (hargaInput <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('⚠️ Tunggu dulu! Harga riil "${item['barang']['nama_barang']}" tidak boleh 0 atau minus.'), 
           backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating, // Membuat snackbar melayang
+          behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: const EdgeInsets.all(16),
         ));
         return; 
       }
 
-      // 2. Validasi Kwitansi
       if (!_kwitansiBytesMap.containsKey(idDetail)) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('📸 Oops! Kwitansi untuk "${item['barang']['nama_barang']}" wajib diupload.'), 
@@ -286,7 +268,6 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
         return; 
       }
 
-      // 3. Validasi Tanggal Jatuh Tempo (Khusus Hutang)
       if (statusPembayaran == 'PENDING' && _jatuhTempoMap[idDetail] == null) {
          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
            content: Text('🗓️ Pilih Tanggal Jatuh Tempo untuk hutang "${item['barang']['nama_barang']}".'), 
@@ -341,11 +322,10 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
     } finally {
-      setState(() => _isSubmitting = false);
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  // WIDGET BANTUAN UNTUK LABEL DI LUAR KOTAK AGAR TIDAK NABRAK
   Widget _buildExternalLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8, left: 4),
@@ -361,6 +341,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     required bool Function(T, T) compareFn,
     required Function(T?) onChanged,
     VoidCallback? onAddPressed,
+    VoidCallback? onEditPressed,
     bool isLoading = false,
     String? hintText,
   }) {
@@ -369,7 +350,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildExternalLabel(label), // LABEL DI LUAR
+        _buildExternalLabel(label),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -398,7 +379,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                 ),
                 decoratorProps: DropDownDecoratorProps(
                   decoration: InputDecoration(
-                    hintText: 'Pilih...', // Menggunakan hintText bukan labelText
+                    hintText: 'Pilih...',
                     hintStyle: TextStyle(color: Colors.grey.shade500),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
@@ -411,8 +392,20 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                 validator: (val) => val == null ? 'Wajib dipilih' : null,
               ),
             ),
+            if (onEditPressed != null) ...[
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: onEditPressed,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  height: 52, width: 52,
+                  decoration: BoxDecoration(color: Colors.orange.withAlpha(20), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.orange.withAlpha(50))),
+                  child: const Icon(Icons.edit, color: Colors.orange, size: 24),
+                ),
+              ),
+            ],
             if (onAddPressed != null) ...[
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: onAddPressed,
                 borderRadius: BorderRadius.circular(12),
@@ -501,7 +494,6 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          
                           Consumer(builder: (ctx, ref, _) {
                             final katMobil = ref.watch(kategoriMobilProvider).valueOrNull ?? [];
                             return Column(
@@ -594,6 +586,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                             isLoading: _isLoadingBarang,
                             onChanged: (v) => setState(() => _selectedBarang = v),
                             onAddPressed: () => _showAddBarangShortcut(context),
+                            onEditPressed: () => _showEditMasterBarangShortcut(context),
                           ),
                           
                           const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider(thickness: 1.5)),
@@ -644,7 +637,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                             return 'Stok tidak cukup! (Sisa: ${_selectedBarang!.stock})';
                                           }
                                         }
-                                        return null; // Lolos sensor
+                                        return null;
                                       },
                                     ),
                                   ],
@@ -674,7 +667,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                           if (harga == null) return 'Harus berupa angka!';
                                           if (harga < 0) return 'Harga tidak boleh minus!';
                                         }
-                                        return null; // Lolos sensor
+                                        return null;
                                       },
                                     ),
                                   ],
@@ -983,11 +976,22 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     );
   }
 
-  // ============================================================================
-  // SHORTCUT MODALS (BOTTOM SHEETS)
-  // ============================================================================
   void _showAddBarangShortcut(BuildContext context) {
-    showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (ctx) => const _ShortcutBarangFormSheet());
+    showModalBottomSheet(
+      context: context, 
+      isScrollControlled: true, 
+      backgroundColor: Colors.transparent, 
+      builder: (ctx) => _ShortcutBarangFormSheet(initialMobilId: _selectedMobil?.idMobil)
+    );
+  }
+
+  void _showEditMasterBarangShortcut(BuildContext context) {
+    showModalBottomSheet(
+      context: context, 
+      isScrollControlled: true, 
+      backgroundColor: Colors.transparent, 
+      builder: (ctx) => const _ShortcutEditMasterBarangSheet()
+    );
   }
 
   void _showAddMobilShortcut(BuildContext context) {
@@ -999,11 +1003,10 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
   }
 }
 
-// ============================================================================
-// WIDGET KELAS KHUSUS UNTUK FORM BOTTOM SHEET
-// ============================================================================
 class _ShortcutBarangFormSheet extends ConsumerStatefulWidget {
-  const _ShortcutBarangFormSheet();
+  final int? initialMobilId;
+  const _ShortcutBarangFormSheet({this.initialMobilId});
+  
   @override
   ConsumerState<_ShortcutBarangFormSheet> createState() => _ShortcutBarangFormSheetState();
 }
@@ -1021,6 +1024,14 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
   int? _filterKatMobilDiForm;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.initialMobilId != null) {
+      _selectedMobilIds.add(widget.initialMobilId!);
+    }
+  }
+
+  @override
   void dispose() { _namaCtrl.dispose(); _stockCtrl.dispose(); super.dispose(); }
 
   Future<void> _submitForm() async {
@@ -1030,10 +1041,30 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
       return;
     }
     setState(() => _isSubmitting = true);
-    final newBarang = BarangModel(namaBarang: _namaCtrl.text.trim(), idKategori: _selectedKategori!.idKategori, stock: int.tryParse(_stockCtrl.text.trim()) ?? 0);
+    
+    final inputNama = _namaCtrl.text.trim();
+    final allBarang = ref.read(barangControllerProvider).valueOrNull ?? [];
+    final existingBarang = allBarang.where((b) => b.namaBarang.toLowerCase() == inputNama.toLowerCase()).firstOrNull;
+
     try {
-      await ref.read(barangControllerProvider.notifier).addBarang(newBarang, listIdMobilCocok: _selectedMobilIds);
-      if (mounted) Navigator.pop(context);
+      if (existingBarang != null) {
+        await ref.read(barangControllerProvider.notifier).updateBarang(
+          existingBarang, 
+          listIdMobilCocok: _selectedMobilIds
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Barang sudah ada di Master. Otomatis ditautkan ke mobil! 🔗'), backgroundColor: Colors.green));
+          Navigator.pop(context);
+        }
+      } else {
+        final newBarang = BarangModel(
+          namaBarang: inputNama, 
+          idKategori: _selectedKategori!.idKategori, 
+          stock: int.tryParse(_stockCtrl.text.trim()) ?? 0
+        );
+        await ref.read(barangControllerProvider.notifier).addBarang(newBarang, listIdMobilCocok: _selectedMobilIds);
+        if (mounted) Navigator.pop(context);
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
       if (mounted) setState(() => _isSubmitting = false);
@@ -1073,7 +1104,7 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
                     TextFormField(
                       controller: _namaCtrl, textCapitalization: TextCapitalization.words,
                       decoration: InputDecoration(hintText: 'Ketik nama barang', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                      validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
+                      validator: (val) => val == null || val.trim().isEmpty ? 'Wajib diisi' : null,
                     ),
                     const SizedBox(height: 16),
                     _buildExternalLabel('Kategori'),
@@ -1091,6 +1122,7 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
                     const SizedBox(height: 16),
                     _buildExternalLabel('Stok Awal'),
                     TextFormField(
+                      readOnly: true,
                       controller: _stockCtrl, keyboardType: TextInputType.number,
                       decoration: InputDecoration(hintText: '0', filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
                     ),
@@ -1180,6 +1212,294 @@ class _ShortcutBarangFormSheetState extends ConsumerState<_ShortcutBarangFormShe
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
               onPressed: _isSubmitting ? null : _submitForm,
               child: _isSubmitting ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) : const Text('Simpan Barang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// FORM KHUSUS EDIT MASTER BARANG (TAMPILKAN SEMUA DATA)
+// ============================================================================
+class _ShortcutEditMasterBarangSheet extends ConsumerStatefulWidget {
+  const _ShortcutEditMasterBarangSheet();
+  @override
+  ConsumerState<_ShortcutEditMasterBarangSheet> createState() => _ShortcutEditMasterBarangSheetState();
+}
+
+class _ShortcutEditMasterBarangSheetState extends ConsumerState<_ShortcutEditMasterBarangSheet> {
+  final _formKey = GlobalKey<FormState>();
+  
+  BarangModel? _barangYangDiedit; 
+  
+  final _namaCtrl = TextEditingController();
+  final _stockCtrl = TextEditingController(text: '0');
+  
+  KategoriModel? _selectedKategori;
+  final List<int> _selectedMobilIds = []; 
+  bool _isSubmitting = false;
+
+  String _searchMobilQuery = '';
+  int? _filterKatMobilDiForm;
+
+  @override
+  void dispose() { _namaCtrl.dispose(); _stockCtrl.dispose(); super.dispose(); }
+
+  Future<void> _submitForm() async {
+    if (_barangYangDiedit == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih barang yang mau diedit dari dropdown atas!'), backgroundColor: Colors.red));
+      return;
+    }
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedKategori == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih kategori terlebih dahulu!'), backgroundColor: Colors.red));
+      return;
+    }
+    
+    setState(() => _isSubmitting = true);
+    
+    final newBarang = BarangModel(
+      idBarang: _barangYangDiedit!.idBarang, 
+      namaBarang: _namaCtrl.text.trim(), 
+      idKategori: _selectedKategori!.idKategori, 
+      stock: int.tryParse(_stockCtrl.text.trim()) ?? 0
+    );
+    
+    try {
+      await ref.read(barangControllerProvider.notifier).updateBarang(newBarang, listIdMobilCocok: _selectedMobilIds);
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Perubahan Master Barang berhasil disimpan!'), backgroundColor: Colors.green));
+         Navigator.pop(context);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Widget _buildExternalLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade800, fontSize: 13)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.of(context).size.height * 0.9; 
+    final semuaBarangMaster = ref.watch(barangControllerProvider).valueOrNull ?? [];
+
+    return Container(
+      height: height,
+      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 12),
+      child: Column(
+        children: [
+          Center(child: Container(width: 48, height: 5, margin: const EdgeInsets.only(bottom: 24), decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+          const Text('Kelola Master Barang', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 24),
+          
+          Expanded(
+            child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.orange.shade200)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildExternalLabel('Pilih Barang yang Akan Diedit'),
+                          DropdownSearch<BarangModel>(
+                            selectedItem: _barangYangDiedit,
+                            items: (String filter, LoadProps? loadProps) {
+                              if (filter.isEmpty) return semuaBarangMaster;
+                              return semuaBarangMaster.where((b) => b.namaBarang.toLowerCase().contains(filter.toLowerCase())).toList();
+                            },
+                            itemAsString: (b) => '${b.namaBarang} (Stok: ${b.stock})',
+                            compareFn: (a, b) => a.idBarang == b.idBarang,
+                            popupProps: PopupProps.menu(
+                              showSearchBox: true,
+                              searchFieldProps: TextFieldProps(
+                                decoration: InputDecoration(hintText: 'Cari seluruh barang...', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), prefixIcon: const Icon(Icons.search)),
+                              ),
+                            ),
+                            decoratorProps: DropDownDecoratorProps(
+                              decoration: InputDecoration(hintText: 'Cari master barang...', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                            ),
+                            
+                            // ===== LOGIKA AUTO-CHECK MOBIL DITAMBAHKAN DI SINI =====
+                            onSelected: (val) async {
+                              setState(() {
+                                _barangYangDiedit = val;
+                                _selectedMobilIds.clear(); 
+                              });
+
+                              if (val != null) {
+                                setState(() {
+                                  _namaCtrl.text = val.namaBarang;
+                                  _stockCtrl.text = val.stock.toString();
+                                  
+                                  final kategoriList = ref.read(kategoriBarangProvider).valueOrNull;
+                                  if (kategoriList != null) {
+                                    _selectedKategori = kategoriList.where((k) => k.idKategori == val.idKategori).firstOrNull;
+                                  }
+                                });
+
+                                // Tampilkan efek loading selagi menarik relasi mobil dari database
+                                setState(() => _isSubmitting = true); 
+                                try {
+                                  // NARIK DATA DARI DATABASE:
+                                  // Pastikan fungsi getMobilSesuaiBarang tersedia di repository Bos!
+                                  final mobilTerhubung = await ref.read(barangRepositoryProvider).getMobilSesuaiBarang(val.idBarang!);
+                                  
+                                  if (mounted) {
+                                    setState(() {
+                                      _selectedMobilIds.addAll(mobilTerhubung.map((m) => m.idMobil!).whereType<int>());
+                                    });
+                                  }
+                                } catch (e) {
+                                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Note: Buat fungsi getMobilSesuaiBarang di Repository untuk menarik relasi centangnya!')));
+                                } finally {
+                                  if (mounted) setState(() => _isSubmitting = false);
+                                }
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    if (_barangYangDiedit != null) ...[
+                      const SizedBox(height: 24),
+                      _buildExternalLabel('Ubah Nama Barang'),
+                      TextFormField(
+                        controller: _namaCtrl, textCapitalization: TextCapitalization.words,
+                        decoration: InputDecoration(filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) return 'Wajib diisi';
+                          final inputNama = val.trim().toLowerCase();
+                          bool isDuplicate = semuaBarangMaster.any((b) => b.idBarang != _barangYangDiedit!.idBarang && b.namaBarang.trim().toLowerCase() == inputNama);
+                          if (isDuplicate) return 'Barang sudah terdaftar! Gunakan nama lain.';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExternalLabel('Ubah Kategori'),
+                      ref.watch(kategoriBarangProvider).when(
+                        data: (listKategori) => DropdownButtonFormField<KategoriModel>(
+                          value: _selectedKategori,
+                          decoration: InputDecoration(filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                          items: listKategori.map((k) => DropdownMenuItem(value: k, child: Text(k.namaKategori))).toList(),
+                          onChanged: (val) => setState(() => _selectedKategori = val),
+                        ),
+                        loading: () => const CircularProgressIndicator(),
+                        error: (_, __) => const SizedBox(),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExternalLabel('Ubah Stok'),
+                      TextFormField(
+                        controller: _stockCtrl,
+                        keyboardType: TextInputType.number,
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      
+                      const Text('Sesuaikan Ulang Kecocokan Mobil', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const Text('Pilih ulang mobil yang boleh membawa barang ini.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const SizedBox(height: 12),
+                      
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: TextField(
+                              onChanged: (val) => setState(() => _searchMobilQuery = val),
+                              decoration: InputDecoration(hintText: 'Cari Plat...', prefixIcon: const Icon(Icons.search, size: 18), contentPadding: const EdgeInsets.symmetric(horizontal: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 3,
+                            child: ref.watch(kategoriMobilProvider).when(
+                              data: (kategoriList) => DropdownButtonFormField<int?>(
+                                value: _filterKatMobilDiForm,
+                                decoration: InputDecoration(hintText: 'Semua Mobil', contentPadding: const EdgeInsets.symmetric(horizontal: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
+                                isExpanded: true,
+                                items: [
+                                  const DropdownMenuItem(value: null, child: Text('Semua Mobil')),
+                                  ...kategoriList.map((k) => DropdownMenuItem(value: k.idKategori, child: Text(k.namaKategori, overflow: TextOverflow.ellipsis))),
+                                ],
+                                onChanged: (val) => setState(() => _filterKatMobilDiForm = val),
+                              ),
+                              loading: () => const SizedBox(), error: (_, __) => const SizedBox(),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        height: 250,
+                        decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+                        child: ref.watch(mobilControllerProvider).when(
+                          data: (listMobil) {
+                            final filteredMobil = listMobil.where((mobil) {
+                              final matchSearch = mobil.noPlat.toLowerCase().contains(_searchMobilQuery.toLowerCase());
+                              final matchKat = _filterKatMobilDiForm == null || mobil.idKategori == _filterKatMobilDiForm;
+                              return matchSearch && matchKat;
+                            }).toList();
+
+                            return ListView.builder(
+                              itemCount: filteredMobil.length,
+                              itemBuilder: (context, index) {
+                                final mobil = filteredMobil[index];
+                                final isChecked = _selectedMobilIds.contains(mobil.idMobil);
+                                return CheckboxListTile(
+                                  title: Text(mobil.noPlat, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  subtitle: Text(mobil.kategori?.namaKategori ?? 'Tanpa Kategori', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                                  value: isChecked,
+                                  activeColor: Colors.orange,
+                                  onChanged: (bool? value) {
+                                    setState(() {
+                                      if (value == true) _selectedMobilIds.add(mobil.idMobil!);
+                                      else _selectedMobilIds.remove(mobil.idMobil);
+                                    });
+                                  },
+                                );
+                              },
+                            );
+                          },
+                          loading: () => const Center(child: CircularProgressIndicator()), error: (_, __) => const SizedBox(),
+                        ),
+                      ),
+                    ] else ...[
+                      const Padding(
+                        padding: EdgeInsets.only(top: 40),
+                        child: Center(child: Text('Pilih barang terlebih dahulu untuk mulai mengedit.', style: TextStyle(color: Colors.grey))),
+                      )
+                    ]
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: Colors.orange.shade700, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              onPressed: (_isSubmitting || _barangYangDiedit == null) ? null : _submitForm,
+              child: _isSubmitting ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) : const Text('Simpan Perubahan Master', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
           ),
         ],
