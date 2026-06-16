@@ -349,3 +349,17 @@ class AksiHutang {
     ref.invalidate(detailHutangTokoProvider(idToko));
   }
 }
+// Provider untuk mengambil foto bukti transfer dari tabel 'bukti_transfer'
+final urlBuktiTransferProvider = FutureProvider.autoDispose.family<String?, int>((ref, idToko) async {
+  final supabase = Supabase.instance.client;
+  
+  final response = await supabase
+      .from('bukti_transfer')
+      .select('img_url')
+      .eq('id_toko', idToko)
+      // Ambil bukti transfer yang paling terbaru diupload
+      .order('tgl_upload', ascending: false) 
+      .maybeSingle();
+
+  return response?['img_url'] as String?;
+});
