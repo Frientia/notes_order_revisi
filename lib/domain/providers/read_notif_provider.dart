@@ -1,43 +1,36 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Provider untuk mengelola daftar ID transaksi yang sudah dibaca
-final readNotificationsProvider = StateNotifierProvider<ReadNotificationsNotifier, List<int>>((ref) {
-  return ReadNotificationsNotifier();
+final readNotificationsProvider = Provider<ReadNotifService>((ref) {
+  return ReadNotifService(Supabase.instance.client);
 });
 
-class ReadNotificationsNotifier extends StateNotifier<List<int>> {
-  ReadNotificationsNotifier() : super([]) {
-    _loadReadNotifs();
-  }
+class ReadNotifService {
+  final SupabaseClient _supabase;
 
-  // Tarik data memori HP saat aplikasi baru dibuka
-  Future<void> _loadReadNotifs() async {
-    final prefs = await SharedPreferences.getInstance();
-    final listString = prefs.getStringList('read_notifs') ?? [];
-    // Ubah kembali dari String ke Integer
-    state = listString.map((e) => int.parse(e)).toList();
-  }
+  ReadNotifService(this._supabase);
 
-  // Fungsi untuk menandai notifikasi sudah dibaca
-  Future<void> markAsRead(int id) async {
-    if (!state.contains(id)) {
-      final newState = [...state, id];
-      state = newState; // Update tampilan UI
-      
-      // Simpan permanen ke memori HP
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('read_notifs', newState.map((e) => e.toString()).toList());
+  Future<void> markAsRead(int idNotif) async {
+    try {
+      await _supabase
+          .from('notifikasi')
+          .update({'is_read': true})
+          .eq('id_notif', idNotif);
+    } catch (e) {
+      print('Gagal update status baca: $e');
     }
   }
-  // --- FITUR BARU: TANDAI SEMUA SUDAH DIBACA ---
-  Future<void> markAllAsRead(List<int> allIds) async {
-    // Gabungkan ID baru yang belum ada di state tanpa duplikat
-    final updatedState = Set<int>.from(state)..addAll(allIds);
-    state = updatedState.toList();
 
-    // Simpan permanen ke penyimpanan lokal HP
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('read_notifs', state.map((e) => e.toString()).toList());
+  Future<void> markAllAsRead(List<int> allIds) async {
+    if (allIds.isEmpty) return;
+    
+    try {
+      await _supabase
+          .from('notifikasi')
+          .update({'is_read': true})
+          .inFilter('id_notif', allIds);
+    } catch (e) {
+      print('Gagal update semua status baca: $e');
+    }
   }
 }

@@ -615,7 +615,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                       controller: _qtyCtrl, 
                                       keyboardType: TextInputType.number,
                                       decoration: InputDecoration(
-                                        hintText: '1', 
+                                        hintText: 'Misal: 1', 
                                         filled: true, 
                                         fillColor: Colors.white, 
                                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), 

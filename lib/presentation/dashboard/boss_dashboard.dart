@@ -55,12 +55,11 @@ class BossDashboard extends ConsumerWidget {
     final dashboardState = ref.watch(dashboardDataProvider);
 
     final listNotifAsync = ref.watch(riwayatNotifBossProvider);
-    final readNotifs = ref.watch(readNotificationsProvider);
 
     int unreadCount = 0;
     listNotifAsync.whenData((listData) {
       unreadCount = listData
-          .where((d) => !readNotifs.contains(d['id_pencatatan']))
+          .where((d) => d['is_read'] != true)
           .length;
     });
 

@@ -25,12 +25,11 @@ class TransaksiRepository {
         return existing['id_pencatatan'] as int;
       }
 
-      // === PERBAIKAN DI SINI: Tambahkan tgl_pencatatan ===
       final newDraft = await _supabase.from('pencatatan').insert({
         'firebase_uid': firebaseUid,
         'total_harga': 0,
         'status_transaksi': 'DRAFT',
-        'tgl_pencatatan': DateTime.now().toIso8601String(), // Supabase biasanya butuh ini!
+        'tgl_pencatatan': DateTime.now().toIso8601String(),
       }).select('id_pencatatan').single();
 
       return newDraft['id_pencatatan'] as int;
@@ -40,7 +39,6 @@ class TransaksiRepository {
   }
 
   Future<List<Map<String, dynamic>>> getDraftItems(int idPencatatan) async {
-    // REVISI: Menggunakan Deep Join ke tabel kategori_barang dan kategori_mobil
     final rawData = await _supabase
         .from('detail_pencatatan')
         .select('''
@@ -52,7 +50,6 @@ class TransaksiRepository {
         .eq('id_pencatatan', idPencatatan)
         .order('id_detail_pencatatan', ascending: true);
 
-    // Mapping ulang agar UI FormPencatatan tetap bisa membaca 'kategori' dengan mudah
     return rawData.map((item) {
       final b = item['barang'] as Map<String, dynamic>?;
       if (b != null) {
@@ -89,9 +86,6 @@ class TransaksiRepository {
     await _supabase.from('detail_pencatatan').delete().eq('id_detail_pencatatan', idDetail);
   }
 
-  // =======================================================================
-  // FUNGSI BARU: Update Qty Item Draft (Dipanggil dari Form Pencatatan)
-  // =======================================================================
   Future<void> updateQtyItemDraft(int idDetail, int newQty) async {
     await _supabase
         .from('detail_pencatatan')
@@ -107,6 +101,7 @@ class TransaksiRepository {
     try {
       final Map<int, int> uploadedKwitansiMap = {};
 
+      // 1. Upload semua Kwitansi
       for (var item in finalItemsData) {
         final int refId = item['kwitansi_ref_id'];
 
@@ -127,27 +122,36 @@ class TransaksiRepository {
         }
       }
 
+      // 2. Update Detail Transaksi
       for (var item in finalItemsData) {
         final int refId = item['kwitansi_ref_id'];
         
-        if (uploadedKwitansiMap.containsKey(refId)) {
-          final int realIdKwitansi = uploadedKwitansiMap[refId]!;
-
-          await _supabase.from('detail_pencatatan').update({
-            'harga_pembelian_barang': item['harga_pembelian_barang'],
-            'status': item['status'],
-            if (item['tgl_jatuh_tempo'] != null) 'tgl_jatuh_tempo': item['tgl_jatuh_tempo'],
-            'id_kwitansi': realIdKwitansi,
-          }).eq('id_detail_pencatatan', item['id_detail_pencatatan']);
+        Map<String, dynamic> updateData = {
+          'harga_pembelian_barang': item['harga_pembelian_barang'],
+          'status': item['status'],
+        };
+        
+        if (item['tgl_jatuh_tempo'] != null) {
+          updateData['tgl_jatuh_tempo'] = item['tgl_jatuh_tempo'];
         }
+        
+        if (uploadedKwitansiMap.containsKey(refId)) {
+          updateData['id_kwitansi'] = uploadedKwitansiMap[refId];
+        }
+
+        await _supabase.from('detail_pencatatan').update(updateData).eq('id_detail_pencatatan', item['id_detail_pencatatan']);
       }
 
+      // 3. Update Status Nota Utama
       await _supabase.from('pencatatan').update({
         'total_harga': grandTotal,
         'status_transaksi': 'SELESAI',
         'tgl_pencatatan': DateTime.now().toIso8601String(),
       }).eq('id_pencatatan', idPencatatan);
 
+      // =========================================================
+      // 4. LOGIKA TEMBAK NOTIFIKASI OTOMATIS GANDA (DB & FCM PUSH)
+      // =========================================================
       try {
         final responseToken = await _supabase
             .from('users')
@@ -156,16 +160,40 @@ class TransaksiRepository {
             .limit(1)
             .maybeSingle();
 
-        if (responseToken != null && responseToken['fcm_token'] != null) {
-          final String fcmTokenBoss = responseToken['fcm_token'];
+        final String? fcmTokenBoss = responseToken != null ? responseToken['fcm_token'] : null;
+        final notifService = NotificationService();
 
-          await NotificationService.kirimNotifKeBoss(
+        final bool adaLunas = finalItemsData.any((item) => item['status'] == 'SELESAI');
+        final bool adaHutang = finalItemsData.any((item) => item['status'] == 'PENDING');
+
+        // Jika ada barang LUNAS, kirim notif pencatatan biasa
+        if (adaLunas) {
+          await notifService.kirimNotifDanPush(
+            tipeNotif: 'PENCATATAN',
+            idPencatatan: idPencatatan,
+            judul: '✅ Pencatatan Selesai (Lunas)',
+            pesan: 'Petugas telah menginput pengadaan sparepart yang dibayar LUNAS. Ketuk untuk cek detail.',
             tokenBoss: fcmTokenBoss,
-            title: '✅ Pencatatan Baru Selesai!',
-            body: 'Petugas baru saja menyelesaikan input pengadaan sparepart. Ketuk untuk membuka dashboard.',
           );
         }
-      } catch (_) {}
+
+        // Jika ada barang HUTANG, kirim notif pencatatan hutang
+        if (adaHutang) {
+          if (adaLunas) await Future.delayed(const Duration(milliseconds: 500)); 
+          
+          await notifService.kirimNotifDanPush(
+            tipeNotif: 'PENCATATAN_HUTANG',
+            idPencatatan: idPencatatan,
+            judul: '⏳ Catatan Hutang Baru!',
+            pesan: 'Terdapat transaksi pengadaan sparepart dengan status HUTANG yang perlu perhatian.',
+            tokenBoss: fcmTokenBoss,
+          );
+        }
+        
+      } catch (e) {
+        print('Gagal menembak notifikasi di akhir transaksi: $e');
+      }
+      
     } catch (e) {
       throw Exception('Gagal memfinalisasi transaksi: $e');
     }
