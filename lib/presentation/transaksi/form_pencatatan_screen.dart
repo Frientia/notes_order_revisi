@@ -316,7 +316,7 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
       ref.invalidate(barangControllerProvider); 
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transaksi Sukses Disimpan ke Riwayat! Stok otomatis diperbarui.'), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pencatatan Transaksi Sukses Disimpan ke Riwayat! Stok otomatis diperbarui.'), backgroundColor: Colors.green));
         context.pop();
       }
     } catch (e) {

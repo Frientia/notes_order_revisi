@@ -136,7 +136,7 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
             ],
             flexibleSpace: const FlexibleSpaceBar(
               titlePadding: EdgeInsets.only(left: 48, bottom: 16),
-              title: Text('Riwayat Transaksi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+              title: Text('Riwayat Pencatatan Transaksi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
             ),
           ),
           SliverToBoxAdapter(
@@ -264,7 +264,7 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
                           child: Icon(Icons.history_toggle_off, size: 64, color: const Color(0xFF1E3A5F).withAlpha(80)),
                         ),
                         const SizedBox(height: 24),
-                        const Text('Belum Ada Transaksi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
+                        const Text('Belum Ada Pencatatan Transaksi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
                         const SizedBox(height: 8),
                         Text('Tidak ada riwayat untuk periode yang dipilih.', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
                       ],
@@ -332,7 +332,7 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
                               children: [
                                 const Icon(Icons.receipt_long, color: Colors.white, size: 16),
                                 const SizedBox(width: 8),
-                                Text('${displayedRiwayat.length} Transaksi Selesai', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                                Text('${displayedRiwayat.length} Pencatatan Transaksi Selesai', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
                               ],
                             ),
                           )

@@ -74,7 +74,7 @@ class PetugasDashboard extends ConsumerWidget {
                     child: Text('MENU UTAMA', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2)),
                   ),
                   _buildDrawerItem(context, Icons.add_shopping_cart, 'Catat Pembelian', '/pencatatan', const Color(0xFF1E3A5F)),
-                  _buildDrawerItem(context, Icons.history, 'Riwayat Transaksi', '/riwayat', Colors.black87),
+                  _buildDrawerItem(context, Icons.history, 'Riwayat Pencatatan Transaksi', '/riwayat', Colors.black87),
                   
                   const Padding(
                     padding: EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 8),
@@ -200,7 +200,7 @@ class PetugasDashboard extends ConsumerWidget {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: _buildQuickActionButton(context, Icons.history, 'Riwayat Transaksi', Colors.black87, () => context.push('/riwayat')),
+                            child: _buildQuickActionButton(context, Icons.history, 'Riwayat Pencatatan Transaksi', Colors.black87, () => context.push('/riwayat')),
                           ),
                         ],
                       ),
@@ -216,7 +216,7 @@ class PetugasDashboard extends ConsumerWidget {
                           icon: Icons.check_circle_outline,
                           color: Colors.green,
                           title: 'Pekerjaan Tuntas!',
-                          subtitle: 'Tidak ada draft transaksi yang tertunda saat ini.',
+                          subtitle: 'Tidak ada draft Pencatatan Transaksi yang tertunda saat ini.',
                         ),
                       const SizedBox(height: 24),
                       const Text('Peringatan Inventaris', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
