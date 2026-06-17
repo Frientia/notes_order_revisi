@@ -7,8 +7,7 @@ import '../../domain/providers/riwayat_notif_boss_provider.dart';
 import '../../domain/providers/read_notif_provider.dart';
 import '../../core/utils/formatters.dart';
 
-// --- IMPORT PENTING UNTUK POP-UP & PENCARIAN DATA ASLI ---
-import '../../domain/providers/riwayat_provider_boss.dart'; // Pastikan path ini benar sesuai proyek Anda
+import '../../domain/providers/riwayat_provider_boss.dart';
 
 class RiwayatNotifScreen extends ConsumerWidget {
   const RiwayatNotifScreen({super.key});
@@ -161,22 +160,17 @@ class RiwayatNotifScreen extends ConsumerWidget {
                     ),
                   ),
                   onTap: () {
-                    // 1. Tandai notifikasi menjadi abu-abu (dibaca)
                     ref.read(readNotificationsProvider.notifier).markAsRead(idTransaksi);
                     
-                    // 2. Ambil list data riwayat dari State
                     final listSemuaRiwayat = allRiwayatState.value ?? [];
                     
                     try {
-                      // 3. Cari objek RiwayatTransaksi yang ID-nya cocok dengan ID Notifikasi ini
                       final itemAsli = listSemuaRiwayat.firstWhere(
                         (item) => item.idNota == idTransaksi,
                       );
                       
-                      // 4. Jika ketemu, luncurkan Pop-Up persis seperti di Riwayat Boss!
                       _showKwitansiDialog(context, ref, itemAsli);
                     } catch (e) {
-                      // Jika data belum tersinkronisasi, tampilkan pesan error yang rapi
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Memuat detail... Silakan coba lagi atau cek menu Riwayat Keseluruhan.'),
