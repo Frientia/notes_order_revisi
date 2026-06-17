@@ -36,9 +36,9 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:655789277349:android:65981bdbad4a27fe73cd4c",
+        "mobilesdk_app_id": "1:655789277349:android:e1e0c3ec486aae7f73cd4c",
         "android_client_info": {
-          "package_name": "com.example.notes_orders"
+          "package_name": "com.lb.notesorder"
         }
       },
       "oauth_client": [
