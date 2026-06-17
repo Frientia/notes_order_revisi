@@ -116,18 +116,18 @@ class BossDashboard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // KPI row
+                // ─── PERBAIKAN DOSEN: ROW KPI SEKARANG BISA DI-DIRECT KLIK ───
                 Row(
                   children: [
                     Expanded(
                       child: _KpiCard(
                         title: 'Total Belanja',
                         value: AppFormatters.rupiah(data.totalBelanjaSemua),
-                        subtitle:
-                            'Bulan ini: ${AppFormatters.rupiah(data.totalBelanjaBulanIni)}',
+                        subtitle: 'Bulan ini: ${AppFormatters.rupiah(data.totalBelanjaBulanIni)}',
                         icon: Icons.account_balance_wallet_rounded,
                         accent: _P.blue,
                         accentLight: _P.blueL,
+                        onTap: () => context.push('/riwayat-boss'), // Direct ke halaman Riwayat Keseluruhan
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -135,11 +135,11 @@ class BossDashboard extends ConsumerWidget {
                       child: _KpiCard(
                         title: 'Total Hutang',
                         value: AppFormatters.rupiah(data.totalHutangSemua),
-                        subtitle:
-                            'Bulan ini: ${AppFormatters.rupiah(data.totalHutangBulanIni)}',
+                        subtitle: 'Bulan ini: ${AppFormatters.rupiah(data.totalHutangBulanIni)}',
                         icon: Icons.money_off_rounded,
                         accent: _P.red,
                         accentLight: _P.redL,
+                        onTap: () => context.push('/rekap-hutang'), // Direct ke halaman Rekap Hutang Toko
                       ),
                     ),
                   ],
@@ -154,6 +154,7 @@ class BossDashboard extends ConsumerWidget {
                   accent: _P.green,
                   accentLight: _P.greenL,
                   isWide: true,
+                  onTap: () => context.push('/riwayat-boss'), // Direct shortcut ke list dokumen nota
                 ),
 
                 const SizedBox(height: 28),
@@ -290,7 +291,7 @@ class _SectionLabel extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-// KPI CARD
+// KPI CARD (FIXED INTERACTIVE CLICK WITH INKWELL)
 // ─────────────────────────────────────────────
 class _KpiCard extends StatelessWidget {
   final String title;
@@ -300,6 +301,7 @@ class _KpiCard extends StatelessWidget {
   final Color accent;
   final Color accentLight;
   final bool isWide;
+  final VoidCallback onTap; // Parameter callback tap baru
 
   const _KpiCard({
     required this.title,
@@ -309,6 +311,7 @@ class _KpiCard extends StatelessWidget {
     required this.accent,
     required this.accentLight,
     this.isWide = false,
+    required this.onTap,
   });
 
   @override
@@ -362,31 +365,39 @@ class _KpiCard extends StatelessWidget {
       ],
     );
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _P.surface,
+    // Menggunakan Material + InkWell agar efek ripple klik terlihat profesional di atas warna putih
+    return Material(
+      color: _P.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _P.border),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _P.border),
+          ),
+          child: isWide
+              ? Row(
+                  children: [
+                    iconWidget,
+                    const SizedBox(width: 14),
+                    Expanded(child: textBlock),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [iconWidget, const SizedBox(height: 12), textBlock],
+                ),
+        ),
       ),
-      child: isWide
-          ? Row(
-              children: [
-                iconWidget,
-                const SizedBox(width: 14),
-                Expanded(child: textBlock),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [iconWidget, const SizedBox(height: 12), textBlock],
-            ),
     );
   }
 }
 
 // ─────────────────────────────────────────────
-// RECENT TRANSACTIONS CARD (FIXED & REFACTORED)
+// RECENT TRANSACTIONS CARD
 // ─────────────────────────────────────────────
 class _RecentTransactionsCard extends StatelessWidget {
   final WidgetRef ref;
@@ -495,15 +506,12 @@ class _RecentTransactionsCard extends StatelessWidget {
             );
           }
 
-          // ─── LOGIKA SINKRONISASI NOTA: 1 NOTA CUKUP 1 BARANG YANG TAMPIL ───
           final Map<int, dynamic> uniqueNotaMap = {};
           for (var item in listData) {
-            // Jika idNota belum terdaftar, masukkan barang pertama ini sebagai perwakilan
             if (!uniqueNotaMap.containsKey(item.idNota)) {
               uniqueNotaMap[item.idNota] = item;
             }
           }
-          // Ubah kembali map menjadi list data final untuk di-render ke tabel
           final finalDisplayList = uniqueNotaMap.values.toList();
 
           return Column(
@@ -718,8 +726,6 @@ class _RecentTransactionsCard extends StatelessWidget {
                   }),
                 ],
               ),
-
-              // --- FOOTER BUTTON LINK KE MENU RIWAYAT UTAMA ---
               const Divider(height: 1, color: _P.border),
               InkWell(
                 onTap: () => ctx.push('/riwayat-boss'),
@@ -873,7 +879,6 @@ class _ChartCard extends StatelessWidget {
       minY: 0,
       maxY: maxY,
       lineBarsData: [
-        // Blue — belanja
         LineChartBarData(
           spots: List.generate(6, (i) => FlSpot(i.toDouble(), jutaan[i])),
           isCurved: true,
@@ -895,7 +900,6 @@ class _ChartCard extends StatelessWidget {
             color: _P.blue.withOpacity(0.06),
           ),
         ),
-        // Teal — transaksi
         LineChartBarData(
           spots: List.generate(
             6,
@@ -922,9 +926,6 @@ class _ChartCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-// CHART LEGEND DOT
-// ─────────────────────────────────────────────
 class _LegendDot extends StatelessWidget {
   final Color color;
   final String label;
@@ -966,7 +967,6 @@ class _ModernDrawer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header
           Container(
             padding: EdgeInsets.only(
               top: MediaQuery.of(context).padding.top + 20,
@@ -1022,8 +1022,6 @@ class _ModernDrawer extends StatelessWidget {
               ],
             ),
           ),
-
-          // Menu
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
@@ -1071,8 +1069,6 @@ class _ModernDrawer extends StatelessWidget {
               ],
             ),
           ),
-
-          // Logout
           Divider(color: _P.border, height: 1),
           Padding(
             padding: const EdgeInsets.all(12),
