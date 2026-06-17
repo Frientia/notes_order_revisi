@@ -14,6 +14,7 @@ class MobilScreen extends ConsumerStatefulWidget {
 
 class _MobilScreenState extends ConsumerState<MobilScreen> {
   String _searchQuery = '';
+  int? _filterKategoriId; // Tambahan state untuk filter kategori
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -50,7 +51,13 @@ class _MobilScreenState extends ConsumerState<MobilScreen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
-              child: _buildSearchBar(primaryColor),
+              child: Column(
+                children: [
+                  _buildSearchBar(primaryColor),
+                  const SizedBox(height: 12),
+                  _buildFilterKategoriDropdown(), // Tambahan dropdown filter
+                ],
+              ),
             ),
           ),
           mobilState.when(
@@ -59,7 +66,12 @@ class _MobilScreenState extends ConsumerState<MobilScreen> {
                 final query = _searchQuery.toLowerCase();
                 final platMatch = mobil.noPlat.toLowerCase().contains(query);
                 final kategoriMatch = mobil.kategori?.namaKategori.toLowerCase().contains(query) ?? false;
-                return platMatch || kategoriMatch;
+                final searchMatch = platMatch || kategoriMatch;
+                
+                // Tambahan pengecekan filter kategori
+                final filterMatch = _filterKategoriId == null || mobil.idKategori == _filterKategoriId;
+                
+                return searchMatch && filterMatch;
               }).toList();
 
               if (listMobil.isEmpty) {
@@ -72,7 +84,7 @@ class _MobilScreenState extends ConsumerState<MobilScreen> {
               if (filteredList.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
-                  child: _buildEmptyState(Icons.search_off_rounded, 'Tidak Ditemukan', 'Mobil dengan kata kunci "$_searchQuery" tidak ada dalam sistem.'),
+                  child: _buildEmptyState(Icons.search_off_rounded, 'Tidak Ditemukan', 'Mobil tidak ditemukan dengan filter saat ini.'),
                 );
               }
 
@@ -130,6 +142,44 @@ class _MobilScreenState extends ConsumerState<MobilScreen> {
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
+    );
+  }
+
+  // ==== WIDGET BARU: DROPDOWN FILTER KATEGORI ====
+  Widget _buildFilterKategoriDropdown() {
+    return ref.watch(kategoriMobilProvider).when(
+      data: (kategoriList) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 10, offset: const Offset(0, 4))],
+          ),
+          child: DropdownButtonFormField<int?>(
+            value: _filterKategoriId,
+            decoration: InputDecoration(
+              prefixIcon: Icon(Icons.filter_list, color: Colors.grey.shade600),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+            isExpanded: true,
+            hint: const Text('Semua Kategori'),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('Semua Kategori')),
+              ...kategoriList.map((k) => DropdownMenuItem(value: k.idKategori, child: Text(k.namaKategori, overflow: TextOverflow.ellipsis))),
+            ],
+            onChanged: (val) {
+              setState(() {
+                _filterKategoriId = val;
+              });
+            },
+          ),
+        );
+      },
+      loading: () => const SizedBox(),
+      error: (_, __) => const SizedBox(),
     );
   }
 
