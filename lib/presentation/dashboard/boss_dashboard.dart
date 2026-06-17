@@ -11,8 +11,6 @@ import '../../domain/providers/riwayat_provider_boss.dart';
 import '../../core/utils/formatters.dart';
 
 import '../../domain/providers/riwayat_notif_boss_provider.dart';
-import '../../domain/providers/read_notif_provider.dart';
-
 // ─────────────────────────────────────────────
 // DESIGN TOKENS — LIGHT
 // ─────────────────────────────────────────────
