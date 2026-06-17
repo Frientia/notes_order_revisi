@@ -627,16 +627,9 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
                                         
                                         final qtyInput = int.tryParse(v.trim());
                                         if (qtyInput == null) return 'Harus berupa angka!';
-                                        if (qtyInput <= 0) return 'Qty tidak boleh 0 atau minus!';
                                         
-                                        if (_selectedBarang != null) {
-                                          if (_selectedBarang!.stock <= 0) {
-                                            return 'Stok kosong! Tidak bisa dicatat.';
-                                          }
-                                          if (qtyInput > _selectedBarang!.stock) {
-                                            return 'Stok tidak cukup! (Sisa: ${_selectedBarang!.stock})';
-                                          }
-                                        }
+                                        if (qtyInput <= 0) return 'Qty minimal 1!';
+                                        
                                         return null;
                                       },
                                     ),
