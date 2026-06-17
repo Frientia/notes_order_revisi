@@ -23,23 +23,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _submitLogin() async {
+  Future<void> _submitLogin() async {
     if (_formKey.currentState!.validate()) {
       FocusScope.of(context).unfocus();
+      
       await ref.read(authControllerProvider.notifier).login(
             _emailCtrl.text.trim(),
             _passwordCtrl.text.trim(),
           );
       
       final authState = ref.read(authControllerProvider);
+      
       if (mounted) {
         if (authState.hasError) {
-          _showSnackBar(
-            _translateError(authState.error.toString()),
-            Colors.red.shade600,
-          );
+          _showErrorAlert(_translateError(authState.error.toString()));
         } else {
-          _showSnackBar('Berhasil masuk!', Colors.green.shade600);
+          _showSuccessSnackBar('Berhasil masuk! Selamat bekerja.');
         }
       }
     }
@@ -47,21 +46,56 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   String _translateError(String error) {
     final msg = error.toLowerCase();
-    if (msg.contains('invalid') || msg.contains('wrong password')) {
-      return 'Email atau Kata Sandi salah!';
+    if (msg.contains('invalid login credentials') || msg.contains('invalid') || msg.contains('wrong password')) {
+      return 'Email atau Kata Sandi yang Anda masukkan salah!';
     } else if (msg.contains('user not found')) {
-      return 'Akun tidak ditemukan.';
-    } else if (msg.contains('network')) {
-      return 'Koneksi internet bermasalah.';
+      return 'Akun tidak ditemukan. Silakan daftar terlebih dahulu.';
+    } else if (msg.contains('network') || msg.contains('socket')) {
+      return 'Koneksi internet bermasalah. Pastikan HP Anda online.';
+    } else if (msg.contains('too many requests')) {
+      return 'Terlalu banyak percobaan. Tunggu beberapa saat lalu coba lagi.';
     }
-    return error.replaceAll('Exception: ', '');
+    return 'Gagal masuk: ${error.replaceAll('Exception: ', '')}';
   }
 
-  void _showSnackBar(String message, Color color) {
+  void _showErrorAlert(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline_rounded, color: Colors.red, size: 28),
+            SizedBox(width: 8),
+            Text('Gagal Masuk', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Text(message, style: const TextStyle(fontSize: 14)),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF3B56B9),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            ),
+            child: const Text('OK, Saya Mengerti', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: color,
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 12),
+            Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        backgroundColor: Colors.green.shade600,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
