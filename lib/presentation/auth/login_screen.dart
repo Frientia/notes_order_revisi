@@ -46,41 +46,88 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   String _translateError(String error) {
     final msg = error.toLowerCase();
+    
     if (msg.contains('invalid login credentials') || msg.contains('invalid') || msg.contains('wrong password')) {
       return 'Email atau Kata Sandi yang Anda masukkan salah!';
     } else if (msg.contains('user not found')) {
       return 'Akun tidak ditemukan. Silakan daftar terlebih dahulu.';
-    } else if (msg.contains('network') || msg.contains('socket')) {
+    } else if (msg.contains('network') || msg.contains('socket') || msg.contains('connection')) {
       return 'Koneksi internet bermasalah. Pastikan HP Anda online.';
     } else if (msg.contains('too many requests')) {
       return 'Terlalu banyak percobaan. Tunggu beberapa saat lalu coba lagi.';
     }
-    return 'Gagal masuk: ${error.replaceAll('Exception: ', '')}';
+    
+    return 'Gagal masuk ke akun. Silakan coba beberapa saat lagi.';
   }
 
   void _showErrorAlert(String message) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.error_outline_rounded, color: Colors.red, size: 28),
-            SizedBox(width: 8),
-            Text('Gagal Masuk', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          ],
-        ),
-        content: Text(message, style: const TextStyle(fontSize: 14)),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF3B56B9),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-            ),
-            child: const Text('OK, Saya Mengerti', style: TextStyle(fontWeight: FontWeight.bold)),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white,
+        elevation: 10,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.error_outline_rounded, size: 48, color: Colors.red.shade600),
+              ),
+              const SizedBox(height: 20),
+              
+              const Text(
+                'Gagal Masuk',
+                style: TextStyle(
+                  fontSize: 22, 
+                  fontWeight: FontWeight.bold, 
+                  color: Color(0xFF25313A),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14, 
+                  color: Colors.grey.shade700, 
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 32),
+              
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'COBA LAGI', 
+                    style: TextStyle(
+                      fontSize: 16, 
+                      fontWeight: FontWeight.bold, 
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
