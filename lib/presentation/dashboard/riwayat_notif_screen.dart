@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart'; // Pastikan go_router diimport untuk mengalihkan rute halaman
 
 import '../../domain/providers/riwayat_notif_boss_provider.dart';
 import '../../domain/providers/read_notif_provider.dart';
@@ -36,8 +37,9 @@ class _RiwayatNotifScreenState extends ConsumerState<RiwayatNotifScreen> {
             data: (listData) {
               if (listData.isEmpty) return const SizedBox();
 
+              // Hanya saring ID positif (> 0) yang berasal dari log fisik tabel notifikasi Supabase untuk aksi Mark All As Read
               final List<int> unreadIds = listData
-                  .where((d) => d['is_read'] != true)
+                  .where((d) => d['is_read'] != true && (d['id_notif'] as int) > 0)
                   .map((d) => d['id_notif'] as int)
                   .toList();
 
@@ -50,7 +52,7 @@ class _RiwayatNotifScreenState extends ConsumerState<RiwayatNotifScreen> {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Semua notifikasi telah ditandai dibaca'),
+                              content: Text('Semua notifikasi masuk telah ditandai dibaca'),
                               behavior: SnackBarBehavior.floating,
                               duration: Duration(seconds: 1),
                             ),
@@ -199,12 +201,19 @@ class _RiwayatNotifScreenState extends ConsumerState<RiwayatNotifScreen> {
                     return Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       decoration: BoxDecoration(
-                        color: isRead ? Colors.grey.shade100 : Colors.white,
+                        color: isRead ? Colors.grey.shade100 : (isReminder ? Colors.red.withOpacity(0.01) : Colors.white),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: isRead ? [] : [
                           BoxShadow(color: Colors.grey.withAlpha(20), blurRadius: 4, offset: const Offset(0, 2)),
                         ],
-                        border: Border.all(color: isRead ? Colors.grey.shade300 : (isHutang ? (isReminder ? Colors.red.shade200 : Colors.orange.shade200) : Colors.blue.shade100)),
+                        border: Border.all(
+                          color: isRead 
+                              ? Colors.grey.shade300 
+                              : (isReminder 
+                                  ? Colors.red.shade300 // Merah menyala khusus untuk alarm darurat H-3 toko lunas
+                                  : (isHutang ? Colors.orange.shade200 : Colors.blue.shade100)),
+                          width: isReminder ? 1.5 : 1,
+                        ),
                       ),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -264,7 +273,7 @@ class _RiwayatNotifScreenState extends ConsumerState<RiwayatNotifScreen> {
                                     DateFormat('dd MMM yyyy • HH:mm').format(tgl),
                                     style: TextStyle(
                                       fontSize: 12, color: isRead ? Colors.grey.shade400 : Colors.blueGrey.shade600,
-                                      fontWeight: isRead ? FontWeight.normal : FontWeight.w500,
+                                      fontWeight: DateTime.now().difference(tgl).inDays <= 1 && !isRead ? FontWeight.bold : FontWeight.w500,
                                     ),
                                   ),
                                 ],
@@ -272,8 +281,17 @@ class _RiwayatNotifScreenState extends ConsumerState<RiwayatNotifScreen> {
                             ],
                           ),
                         ),
+                        
+                        // ─── LOGIKA KLIK DINAMIS: MEMBEDAKAN NOTIF PETUGAS VS AUTO-REMINDER TOKO ───
                         onTap: () {
-                          if (!isRead) {
+                          // Jika yang diklik adalah Notifikasi Alarm Jatuh Tempo Virtual, terbangkan Boss langsung ke menu rekap hutang
+                          if (tipeNotif == 'REMINDER_HUTANG') {
+                            context.push('/rekap-hutang');
+                            return;
+                          }
+
+                          // Jalankan pembacaan database normal hanya jika notifikasi manual fisik dari petugas lapangan
+                          if (!isRead && idNotif > 0) {
                             ref.read(readNotificationsProvider).markAsRead(idNotif);
                           }
                           
