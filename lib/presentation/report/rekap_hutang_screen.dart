@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/providers/rekap_hutang_provider.dart';
 import '../../core/utils/formatters.dart';
 
@@ -590,86 +591,180 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
     );
   }
 
+  // ─── LOG MULTI-IMAGE BACA LANGSUNG DARI TABEL BUKTI_TRANSFER (100% AKURAT) ───
   void _showGambarTransferDialog(BuildContext context, int idToko, String namaToko) {
     showDialog(
       context: context,
       builder: (ctx) {
+        final supabase = Supabase.instance.client;
+
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Bukti Pelunasan $namaToko',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                  const Divider(height: 24),
-                  
-                  Consumer(
+          child: Container(
+            width: double.maxFinite,
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
+            ),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.history_edu_rounded, color: Color(0xFF1E3A5F), size: 22),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Riwayat Bukti TF: $namaToko',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 20),
+                
+                Expanded(
+                  child: Consumer(
                     builder: (context, ref, child) {
-                      final transferUrlState = ref.watch(urlBuktiTransferProvider(idToko));
-                      
-                      return transferUrlState.when(
-                        loading: () => const Padding(
-                          padding: EdgeInsets.all(30.0),
-                          child: Center(child: CircularProgressIndicator()),
-                        ),
-                        error: (err, stack) => const Text(
-                          'Gagal memuat file bukti transfer.',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                        data: (url) {
-                          if (url == null || url.isEmpty) {
-                            return Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Column(
-                                children: [
-                                  Icon(Icons.image_not_supported, color: Colors.grey, size: 40),
-                                  SizedBox(height: 8),
-                                  Text('Arsip gambar transfer tidak ditemukan.', style: TextStyle(color: Colors.grey)),
-                                ],
+                      return FutureBuilder<List<Map<String, dynamic>>>(
+                        // FIX TOTAL: Tembak langsung ke tabel bukti_transfer sesuai screenshot database Boss
+                        future: supabase
+                            .from('bukti_transfer')
+                            .select('img_url, tgl_upload')
+                            .eq('id_toko', idToko)
+                            .order('tgl_upload', ascending: false), // Gambar terbaru di urutan teratas
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+                          
+                          if (snapshot.hasError) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text('Terjadi kesalahan kueri:\n${snapshot.error}', style: const TextStyle(color: Colors.red, fontSize: 12), textAlign: TextAlign.center),
                               ),
                             );
                           }
                           
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              url,
-                              fit: BoxFit.contain,
-                              width: double.infinity,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return const Padding(
-                                  padding: EdgeInsets.all(20.0),
-                                  child: Center(child: CircularProgressIndicator()),
-                                );
-                              },
-                            ),
+                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                            return Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.image_not_supported_rounded, color: Colors.grey[400], size: 48),
+                                  const SizedBox(height: 8),
+                                  const Text('Arsip gambar transfer tidak ditemukan.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                                ],
+                              ),
+                            );
+                          }
+
+                          // Data langsung dilempar ke list karena tabelnya sudah spesifik menyimpan riwayat
+                          final listData = snapshot.data!;
+
+                          return ListView.builder(
+                            itemCount: listData.length,
+                            itemBuilder: (context, idx) {
+                              final row = listData[idx];
+                              
+                              // Ambil full URL dan tanggal dari kolom yang tertera di screenshot database
+                              final String finalPublicUrl = row['img_url']?.toString() ?? '';
+                              final DateTime tglUpload = row['tgl_upload'] != null 
+                                  ? DateTime.parse(row['tgl_upload'].toString()).toLocal() 
+                                  : DateTime.now();
+                              
+                              final String formatWaktu = DateFormat('dd MMM yyyy • HH:mm').format(tglUpload);
+
+                              // Proteksi jika ternyata ada baris data kosong tanpa URL
+                              if (finalPublicUrl.isEmpty) return const SizedBox.shrink();
+
+                              return Card(
+                                elevation: 0,
+                                color: Colors.grey[50],
+                                margin: const EdgeInsets.only(bottom: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(10.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.calendar_month_rounded, size: 14, color: Colors.blueGrey),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Diunggah: $formatWaktu WIB',
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      InkWell(
+                                        onTap: () {
+                                          // Panggil fungsi preview full screen
+                                          _tampilkanPreviewGambar(context, finalPublicUrl, formatWaktu);
+                                        },
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.network(
+                                            finalPublicUrl,
+                                            fit: BoxFit.cover, // Tetap cover untuk thumbnail
+                                            width: double.infinity,
+                                            height: 180,
+                                            loadingBuilder: (context, child, progress) {
+                                              if (progress == null) return child;
+                                              return Container(
+                                                height: 180,
+                                                color: Colors.grey[100],
+                                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                              );
+                                            },
+                                            errorBuilder: (context, error, stackTrace) {
+                                              return Container(
+                                                height: 120,
+                                                color: Colors.grey[100],
+                                                child: const Center(
+                                                  child: Column(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      Icon(Icons.broken_image_rounded, color: Colors.red, size: 28),
+                                                      SizedBox(height: 4),
+                                                      Text('URL Gambar kedaluwarsa atau terhapus', style: TextStyle(color: Colors.red, fontSize: 11)),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
                       );
                     },
                   ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A5F), foregroundColor: Colors.white),
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Tutup'),
-                    ),
+                ),
+                
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A5F), foregroundColor: Colors.white),
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
@@ -677,3 +772,62 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
     );
   }
 }
+
+// ─── FITUR LIGHTBOX PREVIEW FULL SCREEN (BISA DI-ZOOM) ───
+  void _tampilkanPreviewGambar(BuildContext context, String imageUrl, String waktu) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black87,
+        insetPadding: EdgeInsets.zero, // Bikin full screen
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Widget agar gambar bisa di-zoom cubit (pinch-to-zoom)
+            InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0, // Bisa di-zoom sampai 4x lipat
+              child: SizedBox(
+                width: double.infinity,
+                height: double.infinity,
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain, // Gambar ditampilkan utuh tanpa dipotong
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const Center(child: CircularProgressIndicator(color: Colors.white));
+                  },
+                ),
+              ),
+            ),
+            // Tombol Tutup (X) di pojok kanan atas
+            Positioned(
+              top: 40,
+              right: 16,
+              child: IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.white, size: 32),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ),
+            // Label waktu upload di pojok kiri atas
+            Positioned(
+              top: 48,
+              left: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  waktu,
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }

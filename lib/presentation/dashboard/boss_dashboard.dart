@@ -1081,14 +1081,50 @@ class _ModernDrawer extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              icon: const Icon(Icons.logout_rounded, size: 18),
+             icon: const Icon(Icons.logout_rounded, size: 18),
               label: const Text(
                 'Keluar',
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
               ),
-              onPressed: () async {
+              onPressed: () {
+                // 1. Tutup Drawer terlebih dahulu agar rapi
                 Navigator.pop(context);
-                await ref.read(authRepositoryProvider).logout();
+
+                // 2. Tampilkan dialog konfirmasi validasi keluar
+                showDialog(
+                  context: context,
+                  builder: (dialogCtx) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    title: const Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+                        SizedBox(width: 8),
+                        Text('Konfirmasi Keluar', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    content: const Text('Apakah Boss yakin ingin keluar dari akun Executive?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogCtx), // Tutup dialog, batalkan aksi
+                        child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () async {
+                          Navigator.pop(dialogCtx); // Tutup dialog konfirmasi
+                          
+                          // 3. Eksekusi logout Supabase secara formal
+                          await ref.read(authRepositoryProvider).logout();
+                        },
+                        child: const Text('Ya, Keluar', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                );
               },
             ),
           ),
