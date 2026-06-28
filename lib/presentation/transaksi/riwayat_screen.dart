@@ -62,8 +62,8 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: const Color(0xFF1E3A5F),
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF1E3A5F),
               onPrimary: Colors.white,
               onSurface: Colors.black87,
             ),
@@ -92,6 +92,7 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
       body: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
+          // --- APP BAR & TOMBOL CETAK ---
           SliverAppBar(
             elevation: 0,
             backgroundColor: primaryColor,
@@ -139,6 +140,8 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
               title: Text('Riwayat Pencatatan Transaksi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
             ),
           ),
+
+          // --- KOLOM PENCARIAN ---
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
@@ -173,6 +176,8 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
               ),
             ),
           ),
+
+          // --- CHIP FILTER TANGGAL ---
           SliverToBoxAdapter(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -239,6 +244,8 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
               ),
             ),
           ),
+
+          // --- KONTEN UTAMA ---
           riwayatAsync.when(
             data: (listRiwayat) {
               final displayedRiwayat = listRiwayat.where((riwayat) {
@@ -297,6 +304,8 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
+                    
+                    // --- KARTU TOTAL Keseluruhan & RINCIAN ---
                     Container(
                       padding: const EdgeInsets.all(24),
                       margin: const EdgeInsets.only(bottom: 24),
@@ -311,34 +320,96 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
                           BoxShadow(color: const Color(0xFF3B56B9).withAlpha(77), blurRadius: 20, offset: const Offset(0, 10)),
                         ],
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            searchQuery.isEmpty ? 'Total Pengeluaran' : 'Total Pengeluaran (Hasil Pencarian)', 
-                            style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            AppFormatters.rupiah(grandTotalPeriode), 
-                            style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(color: Colors.white.withAlpha(30), borderRadius: BorderRadius.circular(12)),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.receipt_long, color: Colors.white, size: 16),
-                                const SizedBox(width: 8),
-                                Text('${displayedRiwayat.length} Pencatatan Transaksi Selesai', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                          )
-                        ],
+                      child: Builder( 
+                        builder: (context) {
+                          double totalLunas = 0;
+                          double totalHutang = 0;
+
+                          for (var riwayat in displayedRiwayat) {
+                            for (var detail in riwayat.details) {
+                              if (detail.status == 'PENDING') {
+                                totalHutang += detail.subtotal; 
+                              } else if (detail.status == 'SELESAI') {
+                                totalLunas += detail.subtotal;
+                              }
+                            }
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                searchQuery.isEmpty ? 'Total Keseluruhan' : 'Total Keseluruhan (Hasil Pencarian)', 
+                                style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                AppFormatters.rupiah(grandTotalPeriode), 
+                                style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              // Garis Pemisah
+                              Container(
+                                height: 1,
+                                width: double.infinity,
+                                color: Colors.white.withAlpha(50),
+                              ),
+                              const SizedBox(height: 12),
+                              
+                              // Rincian Teks
+                              const Text(
+                                'Rincian:',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              const SizedBox(height: 8),
+                              
+                              // Baris Lunas
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Lunas', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                                  Text(
+                                    AppFormatters.rupiah(totalLunas),
+                                    style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              
+                              // Baris Hutang
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Hutang', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                                  Text(
+                                    AppFormatters.rupiah(totalHutang),
+                                    style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              
+                              // Chip Jumlah Transaksi
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(color: Colors.white.withAlpha(30), borderRadius: BorderRadius.circular(12)),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.receipt_long, color: Colors.white, size: 16),
+                                    const SizedBox(width: 8),
+                                    Text('${displayedRiwayat.length} Pencatatan Transaksi Selesai', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              )
+                            ],
+                          );
+                        }
                       ),
                     ),
+
+                    // --- LIST KARTU RIWAYAT TRANSAKSI ---
                     ...displayedRiwayat.map((riwayat) {
                       final detailPreview = riwayat.details.isNotEmpty ? riwayat.details.first : null;
                       final sisaItem = riwayat.details.length > 1 ? riwayat.details.length - 1 : 0;

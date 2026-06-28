@@ -84,7 +84,7 @@ class DetailRiwayatScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Total Pengeluaran Nota', style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 13, fontWeight: FontWeight.w500)),
+                          Text('Total Keseluruhan Nota', style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 13, fontWeight: FontWeight.w500)),
                           const SizedBox(height: 4),
                           Text(
                             AppFormatters.rupiah(grandTotal),

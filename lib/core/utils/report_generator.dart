@@ -77,7 +77,7 @@ class ReportGenerator {
             pw.Container(
               alignment: pw.Alignment.centerRight,
               child: pw.Text(
-                'Grand Total Pengeluaran: ${AppFormatters.rupiah(grandTotalSemua)}',
+                'Grand Total Keseluruhan: ${AppFormatters.rupiah(grandTotalSemua)}',
                 style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
               ),
             ),

@@ -218,14 +218,24 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
               ),
             ),
 
-            // --- KARTU TOTAL PENGELUARAN ---
             SliverToBoxAdapter(
               child: riwayatState.when(
                 data: (data) {
-                  final totalBelanja = data.fold<double>(
+                  // Hitung Total Keseluruhan
+                  final totalKeseluruhan = data.fold<double>(
                     0,
                     (sum, item) => sum + item.subtotal,
                   );
+                  
+                  final totalHutang = data
+                      .where((item) => item.status == 'PENDING')
+                      .fold<double>(0, (sum, item) => sum + item.subtotal);
+
+                  // Hitung Total Lunas (SELESAI)
+                  final totalLunas = data
+                      .where((item) => item.status == 'SELESAI')
+                      .fold<double>(0, (sum, item) => sum + item.subtotal);
+
                   return Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Container(
@@ -240,7 +250,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.indigo.withValues(alpha: 77),
+                            color: Colors.indigo.withAlpha(77),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -250,7 +260,7 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Total Pengeluaran (Periode Filter)',
+                            'Total Keseluruhan (Periode Filter)',
                             style: TextStyle(
                               color: Colors.white70,
                               fontSize: 13,
@@ -258,14 +268,75 @@ class _RiwayatScreenBossState extends ConsumerState<RiwayatScreenBoss> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            AppFormatters.rupiah(totalBelanja),
+                            AppFormatters.rupiah(totalKeseluruhan),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+                          const SizedBox(height: 16),
+                          
+                          // Garis Pemisah Tipis
+                          Container(
+                            height: 1,
+                            width: double.infinity,
+                            color: Colors.white.withAlpha(50),
+                          ),
+                          const SizedBox(height: 12),
+                          
+                          // Bagian Rincian
+                          const Text(
+                            'Rincian:',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
                           const SizedBox(height: 8),
+                          
+                          // Baris LUNAS
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Lunas',
+                                style: TextStyle(color: Colors.white70, fontSize: 14),
+                              ),
+                              Text(
+                                AppFormatters.rupiah(totalLunas),
+                                style: const TextStyle(
+                                  color: Colors.greenAccent, 
+                                  fontWeight: FontWeight.bold, 
+                                  fontSize: 14
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          
+                          // Baris HUTANG
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Hutang',
+                                style: TextStyle(color: Colors.white70, fontSize: 14),
+                              ),
+                              Text(
+                                AppFormatters.rupiah(totalHutang),
+                                style: const TextStyle(
+                                  color: Colors.orangeAccent, 
+                                  fontWeight: FontWeight.bold, 
+                                  fontSize: 14
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          
+                          // Total Item Tercatat
                           Row(
                             children: [
                               const Icon(
