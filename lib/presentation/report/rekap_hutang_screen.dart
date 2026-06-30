@@ -78,34 +78,30 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                   ),
                   child: Column(
                     children: [
-                      ref.watch(rekapHutangRawProvider).when(
-                        data: (listMentah) {
-                          final dataFilter = filterBulanAktif == null
-                              ? listMentah
-                              : listMentah.where((item) =>
-                                  item.tglPencatatan.year == filterBulanAktif.year &&
-                                  item.tglPencatatan.month == filterBulanAktif.month);
+                      // ✅ REVISI FIX: Mengganti ref.watch(rekapHutangRawProvider) dengan kalkulasi langsung dari agregat toko
+                      (() {
+                        // Menghitung total hutang secara bersih dari daftar toko aktif (bebas duplikasi gambar)
+                        final totalHutangTeks = listHutangAktifOnly.fold<double>(
+                          0, (sum, toko) => sum + toko.totalHutang,
+                        );
 
-                          final totalHutangTeks = dataFilter.fold<double>(
-                            0, (sum, item) => sum + (item.status == 'PENDING' ? item.subtotal : 0.0),
-                          );
+                        String labelTotal = 'Total Hutang Berjalan (Semua Periode)';
+                        if (filterBulanAktif != null) {
+                          labelTotal = 'Hutang Periode: ${DateFormat('MMM yyyy').format(filterBulanAktif)}';
+                        }
 
-                          String labelTotal = 'Total Hutang Berjalan (Semua Periode)';
-                          if (filterBulanAktif != null) {
-                            labelTotal = 'Hutang Periode: ${DateFormat('MMM yyyy').format(filterBulanAktif)}';
-                          }
-
-                          return Column(
-                            children: [
-                              Text(labelTotal, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 6),
-                              Text(AppFormatters.rupiah(totalHutangTeks), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.red)),
-                            ],
-                          );
-                        },
-                        loading: () => const SizedBox(height: 50, child: Center(child: CircularProgressIndicator())),
-                        error: (_, __) => const Text('Gagal memuat ringkasan dana'),
-                      ),
+                        return Column(
+                          children: [
+                            Text(labelTotal, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 6),
+                            Text(
+                              AppFormatters.rupiah(totalHutangTeks), 
+                              style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.red)
+                            ),
+                          ],
+                        );
+                      })(), // Langsung dieksekusi sebagai Anonymous Function IIFE
+                      
                       const SizedBox(height: 16),
                       TextField(
                         controller: _searchController,
