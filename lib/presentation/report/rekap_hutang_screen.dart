@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:notes_order/domain/providers/dashboard_boss_provider.dart';
+import 'package:notes_order/domain/providers/riwayat_notif_boss_provider.dart';
 import 'package:notes_order/domain/providers/riwayat_provider_boss.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/providers/rekap_hutang_provider.dart';
@@ -487,6 +488,8 @@ class _RekapHutangScreenState extends ConsumerState<RekapHutangScreen> {
                 ref.invalidate(dashboardDataProvider);
 
                 ref.invalidate(recentTransaksiDashboardProvider);
+
+                ref.invalidate(riwayatNotifBossProvider);
 
                 ref.invalidate(rekapHutangRawProvider); 
                 if (screenCtx.mounted) {
