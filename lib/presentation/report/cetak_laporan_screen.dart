@@ -14,6 +14,8 @@ class CetakLaporanScreen extends ConsumerWidget {
     final tglSelesai = ref.watch(cetakTanggalSelesaiProvider);
     final selStatus = ref.watch(cetakFilterStatusProvider);
     final selNoPlat = ref.watch(cetakFilterNoPlatProvider);
+    // Tambahan state provider untuk Toko
+    final selToko = ref.watch(cetakFilterTokoProvider); 
 
     final rawDataAsync = ref.watch(cetakRawDataProvider);
     final listFinalCetak = ref.watch(cetakFilteredDataProvider);
@@ -27,8 +29,13 @@ class CetakLaporanScreen extends ConsumerWidget {
       (sum, item) => sum + item.subtotal,
     );
 
+    // Menarik daftar Nopol unik
     final List<String> listPlatUnik =
         rawDataAsync.value?.map((e) => e.nopolMobil).toSet().toList() ?? [];
+        
+    // Menarik daftar Toko unik
+    final List<String> listTokoUnik =
+        rawDataAsync.value?.map((e) => e.namaToko).toSet().toList() ?? [];
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -186,7 +193,7 @@ class CetakLaporanScreen extends ConsumerWidget {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.filter_alt, color: const Color(0xFF1E3A5F), size: 20),
+                        Icon(Icons.filter_alt, color: Color(0xFF1E3A5F), size: 20),
                         SizedBox(width: 8),
                         Text(
                           'Saringan Data Spesifik',
@@ -232,10 +239,10 @@ class CetakLaporanScreen extends ConsumerWidget {
                         ),
                       ],
                       onChanged: (val) =>
-                          ref.read(cetakFilterStatusProvider.notifier).state =
-                              val,
+                          ref.read(cetakFilterStatusProvider.notifier).state = val,
                     ),
                     const SizedBox(height: 16),
+                    
                     const Text(
                       'Batasi Per Plat Mobil',
                       style: TextStyle(
@@ -261,13 +268,45 @@ class CetakLaporanScreen extends ConsumerWidget {
                           child: Text('Semua Armada Operasional'),
                         ),
                         ...listPlatUnik.map(
-                          (plat) =>
-                              DropdownMenuItem(value: plat, child: Text(plat)),
+                          (plat) => DropdownMenuItem(value: plat, child: Text(plat)),
                         ),
                       ],
                       onChanged: (val) =>
-                          ref.read(cetakFilterNoPlatProvider.notifier).state =
-                              val,
+                          ref.read(cetakFilterNoPlatProvider.notifier).state = val,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // --- TAMBAHAN FILTER TOKO DI SINI ---
+                    const Text(
+                      'Batasi Per Toko',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String?>(
+                      value: selToko,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                        ),
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('Semua Toko'),
+                        ),
+                        ...listTokoUnik.map(
+                          (toko) => DropdownMenuItem(value: toko, child: Text(toko)),
+                        ),
+                      ],
+                      onChanged: (val) =>
+                          ref.read(cetakFilterTokoProvider.notifier).state = val,
                     ),
                   ],
                 ),
@@ -407,9 +446,9 @@ class CetakLaporanScreen extends ConsumerWidget {
                       onPressed: listFinalCetak.isEmpty
                           ? null
                           : () => ExportService.eksporExcel(
-                              data: listFinalCetak,
-                              periode: stringPeriode,
-                            ),
+                                data: listFinalCetak,
+                                periode: stringPeriode,
+                              ),
                     ),
                   ),
                 ),

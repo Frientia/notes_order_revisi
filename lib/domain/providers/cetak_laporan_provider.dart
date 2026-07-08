@@ -20,6 +20,9 @@ final cetakFilterNoPlatProvider = StateProvider.autoDispose<String?>(
 final cetakFilterKategoriBarangProvider = StateProvider.autoDispose<String?>(
   (ref) => null,
 );
+final cetakFilterTokoProvider = StateProvider.autoDispose<String?>(
+  (ref) => null,
+);
 
 final cetakRawDataProvider = FutureProvider.autoDispose<List<RiwayatTransaksi>>((
   ref,
@@ -72,18 +75,15 @@ final cetakRawDataProvider = FutureProvider.autoDispose<List<RiwayatTransaksi>>(
         idNota: pencatatan['id_pencatatan'] as int? ?? 0,
         tanggal: DateTime.parse(pencatatan['tgl_pencatatan']),
         namaBarang: row['barang']?['nama_barang'] ?? 'Barang Terhapus',
-        // PERBAIKAN: Mapping data kategori dari relasi baru
         kategoriBarang: row['barang']?['kategori_barang']?['nama_kategori'] ?? '-',
         namaToko: row['toko']?['nama_toko'] ?? '-',
         nopolMobil: row['mobil']?['no_plat'] ?? '-',
-        // PERBAIKAN: Mapping data kategori dari relasi baru
         kategoriMobil: row['mobil']?['kategori_mobil']?['nama_kategori'] ?? '-',
         namaPetugas: pencatatan['users']?['nama_user'] ?? 'Sistem',
         qty: qty,
         harga: harga,
         subtotal: qty * harga,
         status: row['status'] ?? 'PENDING',
-        // PERBAIKAN: Menambahkan kwitansi agar sesuai dengan model RiwayatTransaksi terbaru
         imgKwitansi: row['kwitansi']?['img_url'], 
       ),
     );
@@ -98,11 +98,13 @@ final cetakFilteredDataProvider = Provider.autoDispose<List<RiwayatTransaksi>>((
   final status = ref.watch(cetakFilterStatusProvider);
   final noPlat = ref.watch(cetakFilterNoPlatProvider);
   final katBarang = ref.watch(cetakFilterKategoriBarangProvider);
+  final namaToko = ref.watch(cetakFilterTokoProvider);
 
   return rawState.where((item) {
     if (status != null && item.status != status) return false;
     if (noPlat != null && item.nopolMobil != noPlat) return false;
     if (katBarang != null && item.kategoriBarang != katBarang) return false;
+    if (namaToko != null && item.namaToko != namaToko) return false;
     return true;
   }).toList();
 });
