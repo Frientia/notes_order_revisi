@@ -57,6 +57,7 @@ dependencies:
   googleapis_auth: ^1.6.0
   http: ^1.6.0
   shared_preferences: ^2.5.5
+  flutter_launcher_icons: ^0.13.1
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +84,7 @@ flutter:
   # Tambahkan bagian assets ini jika belum ada
   assets:
     - assets/logo/
+    - assets/icons/
     - assets/service-account.json
 
   # To add assets to your application, add an assets section, like this:
@@ -115,3 +117,8 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/icon_app.png"
