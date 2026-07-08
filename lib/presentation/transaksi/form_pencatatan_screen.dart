@@ -74,10 +74,18 @@ class _FormPencatatanScreenState extends ConsumerState<FormPencatatanScreen> {
     
     try {
       final repo = ref.read(barangRepositoryProvider);
-      final hasil = await repo.getBarangSesuaiMobil(idMobil);
+      final hasilSpesifik = await repo.getBarangSesuaiMobil(idMobil);
+      final allBarang = ref.read(barangControllerProvider).valueOrNull ?? [];
+      final barangUmum = allBarang.where((b) {
+        return b.kecocokanMobil == null || b.kecocokanMobil!.isEmpty;
+      }).toList();
       if (mounted) {
         setState(() {
-          _barangSesuaiMobilList = hasil;
+
+          _barangSesuaiMobilList = [...hasilSpesifik, ...barangUmum];
+
+          final uniqueIds = <int>{};
+           _barangSesuaiMobilList.retainWhere((b) => uniqueIds.add(b.idBarang!));
         });
       }
     } catch (e) {
