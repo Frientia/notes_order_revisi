@@ -1,5 +1,5 @@
 <div align="center">
-  <img width="500" height="500" alt="icon_app" src="https://github.com/user-attachments/assets/0218e4f4-4943-4a5c-8f6f-4004c83deaaf" />
+  <img width="500" height="500" alt="Notes Order" src="https://github.com/user-attachments/assets/0218e4f4-4943-4a5c-8f6f-4004c83deaaf" />
 </div>
 
 <h1 align="center">Notes Order</h1>
@@ -11,12 +11,31 @@
 
 <div align="center">
 
+
+
 ![Flutter](https://img.shields.io/badge/Flutter-02569B?style=flat&logo=flutter&logoColor=white)
+
+
+
+
 ![Dart](https://img.shields.io/badge/Dart-0175C2?style=flat&logo=dart&logoColor=white)
+
+
+
+
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat&logo=supabase&logoColor=white)
+
+
+
+
 ![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=flat&logo=firebase&logoColor=black)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white)
+
+
+
+
 ![License](https://img.shields.io/badge/License-Academic-lightgrey)
+
+
 
 </div>
 
@@ -58,9 +77,10 @@ Aplikasi ini menggantikan proses tersebut dengan ekosistem digital terpadu yang 
 - Manajemen kwitansi digital melalui unggah foto ke Supabase Storage, termasuk opsi menggunakan kembali kwitansi yang sama untuk beberapa barang dalam satu nota.
 - Pengurangan stok barang secara otomatis pada Master Barang saat transaksi difinalisasi.
 
-### Notifikasi Eksekutif Real-Time
-- Notifikasi push (Firebase Cloud Messaging) dikirim ke perangkat pimpinan setiap kali transaksi difinalisasi oleh petugas lapangan.
-- Notifikasi dibedakan berdasarkan status pembayaran: transaksi cash dan transaksi dengan komponen hutang yang memerlukan perhatian jatuh tempo.
+### Notifikasi Eksekutif (Hybrid Supabase + FCM)
+- Setiap kejadian penting (pencatatan baru, pencatatan hutang, reminder jatuh tempo, pelunasan) dicatat sebagai riwayat pada tabel `notifikasi` di Supabase, sehingga tersimpan sebagai kotak masuk di dalam aplikasi.
+- Secara bersamaan, sistem mengirim push notification ke perangkat Boss melalui Firebase Cloud Messaging (HTTP v1 API), diautentikasi menggunakan OAuth 2.0 service account.
+- Jika token FCM milik Boss belum tersedia, riwayat tetap tersimpan di Supabase namun proses push ke perangkat dilewati.
 
 ### Dashboard & Monitoring
 - Dashboard Logistik untuk petugas lapangan, menampilkan ringkasan pekerjaan harian dan draft yang tertunda.
@@ -73,15 +93,16 @@ Aplikasi ini menggantikan proses tersebut dengan ekosistem digital terpadu yang 
 
 ## Arsitektur Aplikasi
 
-Aplikasi dibangun mengikuti pola arsitektur berbasis fitur (feature-based architecture) agar mudah dikembangkan dan dipelihara, dengan pemisahan tanggung jawab antar layer.
+Aplikasi dibangun mengikuti pola pemisahan layer (core, data, domain, presentation) agar mudah dikembangkan dan dipelihara.
 
 ```
+
 lib/
 ├── core/
-│   ├── config/           # Setup Supabase, Firebase, Environment variables
-│   ├── services/         # ExportService (PDF/Excel), Notification Service
-│   ├── theme/            # Tema aplikasi (Warna Navy 0xFF1E3A5F & Aksen)
-│   └── utils/            # Formatters (Rupiah, Tanggal, dll)
+│   ├── config/           # Setup Supabase, Firebase, environment variables
+│   ├── services/         # ExportService (PDF/Excel), NotificationService
+│   ├── theme/            # Tema aplikasi (warna Navy 0xFF1E3A5F & aksen)
+│   └── utils/            # Formatters (Rupiah, tanggal, dll)
 ├── data/
 │   ├── models/           # Data classes (BarangModel, MobilModel, RiwayatTransaksi)
 │   └── repositories/     # Akses langsung ke Supabase client (.from().select())
@@ -103,15 +124,16 @@ Basis data dirancang dengan skema relasional yang dinormalisasi (hingga 3NF di a
 - **barang_mobil** — tabel penghubung many-to-many antara barang dan mobil untuk logika kecocokan mobil.
 - **toko** — direktori supplier tempat pembelian barang.
 - **transaksi** ⇄ **detail_transaksi** — nota transaksi dan rincian item di dalamnya, masing-masing menyimpan status pembayaran (lunas/hutang) dan referensi bukti kwitansi.
+- **notifikasi** — riwayat notifikasi yang dikirim ke Boss (pencatatan baru, hutang, reminder, pelunasan).
 
 ### Peran Backend & Layanan
 
 | Komponen | Peran |
 |---|---|
-| Supabase (PostgreSQL) | Basis data relasional utama, autentikasi, dan real-time sync antara petugas lapangan dan dashboard pimpinan |
+| Supabase (PostgreSQL) | Basis data relasional utama, real-time sync, dan riwayat notifikasi |
 | Supabase Storage | Penyimpanan berkas gambar kwitansi transaksi |
-| Firebase Cloud Messaging | Pengiriman push notification ke perangkat pimpinan saat ada transaksi baru |
-| Riverpod | State management, caching data master, dan smart filtering di sisi klien |
+| Firebase Authentication | Autentikasi login pengguna (Petugas dan Boss) |
+| Firebase Cloud Messaging | Push notification ke perangkat Boss (HTTP v1 API, OAuth 2.0 service account) |
 
 ## Alur Sistem
 
@@ -121,7 +143,7 @@ Basis data dirancang dengan skema relasional yang dinormalisasi (hingga 3NF di a
 1. Splash Screen
    ↓
 2. Auth Guard
-   (Memeriksa sesi login yang tersimpan)
+   (Memeriksa sesi login Firebase Authentication yang tersimpan)
    ↓
    ├─ Jika belum login   → Login / Registrasi
    └─ Jika sudah login   → Dashboard sesuai peran (Petugas / Boss)
@@ -141,7 +163,7 @@ Basis data dirancang dengan skema relasional yang dinormalisasi (hingga 3NF di a
 4. Simpan & Selesaikan Transaksi
    (Data tersimpan ke Supabase, stok Master Barang terpotong otomatis)
    ↓
-5. Notifikasi terkirim ke perangkat Boss via Firebase Cloud Messaging
+5. NotificationService dijalankan (lihat Alur Notifikasi Eksekutif)
 ```
 
 ### 3. Alur Notifikasi Eksekutif
@@ -149,10 +171,13 @@ Basis data dirancang dengan skema relasional yang dinormalisasi (hingga 3NF di a
 ```text
 1. Transaksi difinalisasi oleh Petugas
    ↓
-2. Sistem membedah isi nota
+2. Riwayat notifikasi disimpan ke tabel notifikasi (Supabase)
    ↓
-   ├─ Ada item CASH     → Notifikasi transaksi lunas terkirim
-   └─ Ada item HUTANG   → Notifikasi peringatan jatuh tempo terkirim
+3. Sistem memeriksa token FCM milik Boss
+   ├─ Jika token tersedia → Generate OAuth 2.0 access token (service account)
+   │                         → Kirim push via FCM HTTP v1 API
+   │                         → Notifikasi muncul di HP Boss
+   └─ Jika token kosong   → Riwayat tetap tersimpan di Supabase, push dilewati
 ```
 
 ### 4. Alur Pelaporan (Boss)
@@ -173,12 +198,11 @@ Basis data dirancang dengan skema relasional yang dinormalisasi (hingga 3NF di a
 
 | Kategori | Teknologi |
 |---|---|
-| Frontend | Flutter |
-| Bahasa Pemrograman | Dart |
+| Frontend | Flutter (Dart) |
 | Backend & Database | Supabase (PostgreSQL) |
-| Penyimpanan Berkas | Supabase Storage |
-| Notifikasi | Firebase Cloud Messaging (FCM) |
+| Autentikasi & Notifikasi | Firebase (Authentication & Cloud Messaging) |
 | State Management | Riverpod |
+| Routing | go_router |
 
 ## Cara Instalasi
 
@@ -189,7 +213,7 @@ Pastikan perangkat pengembangan sudah memiliki:
 - Dart SDK versi 3.2.0 atau lebih baru
 - Android Studio atau Visual Studio Code
 - Akun dan proyek Supabase yang sudah dikonfigurasi
-- Akun dan proyek Firebase yang sudah dikonfigurasi (untuk Firebase Cloud Messaging)
+- Akun dan proyek Firebase yang sudah dikonfigurasi (Authentication & Cloud Messaging)
 - Git
 
 ### Langkah Instalasi
@@ -207,7 +231,14 @@ cd notes_order_revisi
 flutter pub get
 ```
 
-3. Konfigurasi Firebase
+3. Konfigurasi Supabase
+
+```bash
+# Salin file environment contoh, lalu isi SUPABASE_URL dan SUPABASE_ANON_KEY
+cp .env.example .env
+```
+
+4. Konfigurasi Firebase
 
 ```bash
 # Unduh google-services.json dari Firebase Console
@@ -215,7 +246,7 @@ flutter pub get
 cp path/to/google-services.json android/app/
 ```
 
-4. Jalankan aplikasi
+5. Jalankan aplikasi
 
 ```bash
 flutter run
@@ -291,11 +322,12 @@ flutter build apk --split-per-abi
 | Rekap Hutang Toko | Filter Rekap Hutang | Akuntabilitas Petugas | Pusat Pelaporan |
 |---|---|---|---|
 | <img width="140" alt="Rekap Hutang Boss" src="https://github.com/user-attachments/assets/f83573f4-29b8-4463-a2d5-6be3f44c979c" /> | <img width="140" alt="Filter Rekap Hutang Boss" src="https://github.com/user-attachments/assets/2d51dbdc-300f-45f1-a261-2f3cd3c0b388" /> | <img width="140" alt="Akuntabilitas Petugas Boss" src="https://github.com/user-attachments/assets/6dff6193-bd86-4527-952f-05fc7d73782a" /> | <img width="140" alt="Cetak Laporan Boss" src="https://github.com/user-attachments/assets/e1eb683c-9ddf-4d70-9e6f-3f660b018b5c" /> |
+
 ## Dokumentasi
 
 Dokumentasi lengkap penggunaan aplikasi (Manual Book) untuk peran Petugas Lapangan dan Pimpinan tersedia pada tautan berikut:
 
-**[Manual Book — Sistem Pencatatan Pembelian Barang Operasional](https://drive.google.com/file/d/1ZAeOE9K1qe4d9a4bG5K6Es1u6R-ohIi7/view?usp=drive_link)**.
+**[Manual Book — Notes Order](https://drive.google.com/file/d/1ZAeOE9K1qe4d9a4bG5K6Es1u6R-ohIi7/view?usp=drive_link)**
 
 ## Lisensi
 
@@ -304,5 +336,5 @@ Proyek ini dikembangkan untuk keperluan akademik (Project 3) di Institut Teknolo
 ---
 
 <div align="center">
-  <p>© 2026 Lahir Barutama Logistics & Transaction System. All rights reserved.</p>
+  <p>© 2026 Notes Order. All rights reserved.</p>
 </div>
