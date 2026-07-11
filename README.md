@@ -260,26 +260,37 @@ flutter build apk --split-per-abi
 
 | Login | Registrasi |
 |---|---|
-| ![Login](<img width="1220" height="2712" alt="Login" src="https://github.com/user-attachments/assets/4472b3c6-77f1-45fa-ac5c-9ea53d11a568" />) | ![Registrasi](<img width="1220" height="2712" alt="Registerasi" src="https://github.com/user-attachments/assets/775ec21e-6d1c-4846-ab40-6103c64e30d7" />) |
+| <img width="160" alt="Login" src="https://github.com/user-attachments/assets/4472b3c6-77f1-45fa-ac5c-9ea53d11a568" /> | <img width="160" alt="Registrasi" src="https://github.com/user-attachments/assets/775ec21e-6d1c-4846-ab40-6103c64e30d7" /> |
 
 ### Petugas Lapangan — Dashboard & Master Data
 
 | Dashboard Logistik | Sidebar Petugas | Master Data Toko | Master Data Barang | Master Data Mobil |
 |---|---|---|---|---|
-| ![Dashboard Petugas](<img width="1220" height="3261" alt="Dashboard Petugas" src="https://github.com/user-attachments/assets/e93286c0-726c-4175-9bbf-ba716b14f6df" />) | ![Sidebar Petugas](<img width="1220" height="2712" alt="Sidebar" src="https://github.com/user-attachments/assets/7762e15f-df63-4601-a161-58fac856fe84" />) | ![Master Data Toko](<img width="1220" height="2712" alt="Master Data Toko" src="https://github.com/user-attachments/assets/faf14def-8f6b-4140-9834-7894270a1644" />) | ![Master Data Barang](<img width="1220" height="2712" alt="Master Data Barang" src="https://github.com/user-attachments/assets/82d49366-2d2c-4249-84c9-ebf0ca917662" />) | ![Master Data Mobil](<img width="1220" height="2712" alt="Master Data Mobil" src="https://github.com/user-attachments/assets/dfbaa4a8-fd6f-4693-85c6-2966c11a4f03" />) |
+| <img width="140" alt="Dashboard Petugas" src="https://github.com/user-attachments/assets/e93286c0-726c-4175-9bbf-ba716b14f6df" /> | <img width="140" alt="Sidebar Petugas" src="https://github.com/user-attachments/assets/7762e15f-df63-4601-a161-58fac856fe84" /> | <img width="140" alt="Master Data Toko" src="https://github.com/user-attachments/assets/faf14def-8f6b-4140-9834-7894270a1644" /> | <img width="140" alt="Master Data Barang" src="https://github.com/user-attachments/assets/82d49366-2d2c-4249-84c9-ebf0ca917662" /> | <img width="140" alt="Master Data Mobil" src="https://github.com/user-attachments/assets/dfbaa4a8-fd6f-4693-85c6-2966c11a4f03" /> |
 
-### Petugas Lapangan — Form Pencatatan Transaksi
+### Petugas Lapangan — Form Pencatatan Transaksi & Riwayat
 
-| Rencana Belanja | Realisasi Lapangan | Riwayat Pencatatan |
+| Rencana Belanja (1) | Rencana Belanja (2) | Realisasi Lapangan | Riwayat Pencatatan | Detail Nota |
+|---|---|---|---|---|
+| <img width="140" alt="Form Pencatatan 1" src="https://github.com/user-attachments/assets/70bc4fb1-4280-4d18-bb53-dbb9dab67ab5" /> | <img width="140" alt="Form Pencatatan 2" src="https://github.com/user-attachments/assets/da3daf0a-b288-4640-adcf-1e0e5f0dcb66" /> | <img width="140" alt="Form Pencatatan 3" src="https://github.com/user-attachments/assets/89f12351-156f-4889-abca-b22559b0d431" /> | <img width="140" alt="Riwayat Pencatatan" src="https://github.com/user-attachments/assets/6763bd49-7a2a-48c1-aafe-c3aad53f82cd" /> | <img width="140" alt="Detail Riwayat" src="https://github.com/user-attachments/assets/e0784a6e-beea-4fb0-bd54-d5f769615a9c" /> |
+
+### Pimpinan (Boss) — Dashboard, Sidebar & Notifikasi
+
+| Dashboard Executive | Sidebar Boss | Notifikasi Boss |
 |---|---|---|
-| ![Rencana Belanja]() | ![Realisasi Lapangan]() | ![Riwayat Pencatatan]() |
+| <img width="140" alt="Dashboard Boss" src="https://github.com/user-attachments/assets/54935caf-4327-4987-a51c-c20565b7dd07" /> | <img width="140" alt="Sidebar Boss" src="https://github.com/user-attachments/assets/781c0cdd-e2ca-49cd-87d9-64cf82cf10bf" /> | <img width="140" alt="Notifikasi Boss" src="https://github.com/user-attachments/assets/003b6239-7aad-4896-a00c-169625a3e2fe" /> |
 
-### Pimpinan (Boss) — Dashboard & Laporan
+### Pimpinan (Boss) — Riwayat Transaksi
 
-| Dashboard Executive | Riwayat Transaksi | Rekap Hutang Toko | Pusat Pelaporan |
+| Riwayat Transaksi | Filter Lanjutan | Detail Nota |
+|---|---|---|
+| <img width="140" alt="Riwayat Pencatatan Boss" src="https://github.com/user-attachments/assets/341747e7-f1a8-4f31-bc18-fb1cca23477d" /> | <img width="140" alt="Filter Riwayat Pencatatan Boss" src="https://github.com/user-attachments/assets/6537d430-1755-4dbd-8a4b-d1f1fc1ed086" /> | <img width="140" alt="Detail Riwayat Pencatatan Boss" src="https://github.com/user-attachments/assets/ed77724c-64ac-49ce-8a71-d5e6bb4744f0" /> |
+
+### Pimpinan (Boss) — Rekap Hutang, Akuntabilitas & Pelaporan
+
+| Rekap Hutang Toko | Filter Rekap Hutang | Akuntabilitas Petugas | Pusat Pelaporan |
 |---|---|---|---|
-| ![Dashboard Boss]() | ![Riwayat Boss]() | ![Rekap Hutang]() | ![Pusat Pelaporan]() |
-
+| <img width="140" alt="Rekap Hutang Boss" src="https://github.com/user-attachments/assets/f83573f4-29b8-4463-a2d5-6be3f44c979c" /> | <img width="140" alt="Filter Rekap Hutang Boss" src="https://github.com/user-attachments/assets/2d51dbdc-300f-45f1-a261-2f3cd3c0b388" /> | <img width="140" alt="Akuntabilitas Petugas Boss" src="https://github.com/user-attachments/assets/6dff6193-bd86-4527-952f-05fc7d73782a" /> | <img width="140" alt="Cetak Laporan Boss" src="https://github.com/user-attachments/assets/e1eb683c-9ddf-4d70-9e6f-3f660b018b5c" /> |
 ## Dokumentasi
 
 Dokumentasi lengkap penggunaan aplikasi (Manual Book) untuk peran Petugas Lapangan dan Pimpinan tersedia pada tautan berikut:
